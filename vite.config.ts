@@ -1,0 +1,47 @@
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
+
+export default defineConfig(({ command }) => {
+  if (command === 'serve') {
+    // Dev server: serves examples/basic.html with the source loaded directly
+    return {
+      root: 'examples',
+      server: { open: '/basic.html' },
+      resolve: {
+        alias: {
+          // Map the CDN script reference to local source so changes hot-reload
+          'recap-ux': resolve(__dirname, 'src/index.ts'),
+        },
+      },
+    };
+  }
+
+  // Production library build
+  return {
+    build: {
+      lib: {
+        entry: resolve(__dirname, 'src/index.ts'),
+        name: 'Recap',
+        formats: ['umd', 'es', 'cjs'],
+        fileName: (format) => {
+          if (format === 'umd') return 'recap.min.js';
+          if (format === 'es') return 'recap.esm.js';
+          return 'recap.cjs.js';
+        },
+      },
+      rollupOptions: {
+        external: ['react', 'react-dom'],
+        output: {
+          globals: {
+            react: 'React',
+            'react-dom': 'ReactDOM',
+          },
+          exports: 'named',
+        },
+      },
+      minify: 'terser',
+      target: 'es2020',
+      reportCompressedSize: true,
+    },
+  };
+});
