@@ -1694,6 +1694,13 @@ function getStats(events) {
 }
 async function openPanel() {
   if (_panelRoot) {
+    let sessions2 = [];
+    try {
+      sessions2 = await getAllSessions();
+    } catch {
+    }
+    _allEvents = await loadSessionData(_currentSessionId);
+    render(_panelRoot, sessions2);
     _panelRoot.style.display = "flex";
     return;
   }
@@ -1916,14 +1923,14 @@ const Recap = {
     const stopScroll = initScrollCapture((e) => push(e), strip);
     const stopNav = initNavigationCapture((e) => push(e), strip);
     _destroyFns.push(stopClicks, stopScroll, stopNav);
-    const shortcut = config.shortcut ?? "Ctrl+Shift+H";
+    const shortcut = config.shortcut ?? "Alt+Shift+R";
     const onKey = (e) => {
       if (matchesShortcut(e, shortcut)) {
         e.preventDefault();
         if (isPanelOpen()) {
           closePanel();
         } else {
-          void openPanel();
+          void flush().then(() => openPanel());
         }
       }
     };
@@ -1950,7 +1957,7 @@ const Recap = {
   },
   /** Open the researcher panel programmatically. */
   openPanel() {
-    return openPanel();
+    return flush().then(() => openPanel());
   },
   /** Close the researcher panel. */
   closePanel() {
@@ -1986,8 +1993,10 @@ function matchesShortcut(e, shortcut) {
   const needsCtrl = parts.includes("CTRL");
   const needsShift = parts.includes("SHIFT");
   const needsMeta = parts.includes("META") || parts.includes("CMD");
+  const needsAlt = parts.includes("ALT");
   const ctrlOrMeta = isMac ? e.metaKey : e.ctrlKey;
-  return e.key.toUpperCase() === key && (!needsCtrl || ctrlOrMeta) && (!needsShift || e.shiftKey) && (!needsMeta || e.metaKey);
+  const codeKey = e.code.replace(/^Key/, "").replace(/^Digit/, "");
+  return codeKey === key && (!needsCtrl || ctrlOrMeta) && (!needsShift || e.shiftKey) && (!needsMeta || e.metaKey) && (!needsAlt || e.altKey);
 }
 function readScriptConfig() {
   let script = null;

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Recap logo">
+  <!-- Cursor trail icon -->
+  <circle cx="36" cy="52" r="5" fill="#0891b2" opacity="0.3"/>
+  <circle cx="52" cy="44" r="5" fill="#0891b2" opacity="0.5"/>
+  <circle cx="68" cy="38" r="5" fill="#0891b2" opacity="0.7"/>
+  <circle cx="84" cy="34" r="7" fill="#0891b2"/>
+  <!-- Cursor pointer -->
+  <polygon points="84,34 76,58 80,54 84,62 88,60 84,52 90,56" fill="#0891b2"/>
+  <!-- Wordmark -->
+  <text
+    x="60"
+    y="98"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="18"
+    font-weight="600"
+    fill="#0891b2"
+    text-anchor="middle"
+    letter-spacing="1"
+  >recap</text>
+</svg>

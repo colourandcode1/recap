@@ -1,43 +1,74 @@
 {
   "name": "recap-ux",
-  "version": "0.1.0",
-  "description": "Lightweight, privacy-first usability tracking for web prototypes. Zero cookies, zero PII, client-side heatmaps.",
+  "version": "1.0.0",
+  "description": "Lightweight, privacy-first usability testing for web prototypes. Drop-in heatmaps, scroll depth, and AI-ready session exports with zero cookies and zero backend.",
   "type": "module",
-  "author": "",
-  "license": "MIT",
-  "keywords": [
-    "usability",
-    "heatmap",
-    "ux",
-    "analytics",
-    "privacy"
-  ],
   "main": "./dist/recap.cjs.js",
   "module": "./dist/recap.esm.js",
   "browser": "./dist/recap.min.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/recap.esm.js",
-      "require": "./dist/recap.cjs.js"
+      "require": "./dist/recap.cjs.js",
+      "default": "./dist/recap.min.js"
     },
     "./react": {
-      "import": "./dist/recap-react.esm.js",
-      "require": "./dist/recap-react.cjs.js"
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.esm.js",
+      "require": "./dist/react.cjs.js"
     }
   },
-  "types": "./dist/types/index.d.ts",
   "files": [
     "dist",
-    "src"
+    "README.md",
+    "LICENSE"
   ],
+  "sideEffects": false,
+  "keywords": [
+    "usability",
+    "usability-testing",
+    "ux-research",
+    "heatmap",
+    "click-tracking",
+    "scroll-depth",
+    "prototype",
+    "user-testing",
+    "privacy-first",
+    "session-recording",
+    "click-heatmap",
+    "ux",
+    "ui",
+    "analytics",
+    "gdpr"
+  ],
+  "author": {
+    "name": "Tony Craig",
+    "url": "https://www.npmjs.com/~tonyarbor"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tonyarbor/recap-ux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tonyarbor/recap-ux/issues"
+  },
+  "homepage": "https://recap-ux.com",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build && vite build --config vite.react.config.ts && tsc --emitDeclarationOnly",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "browserslist": [
     "last 2 Chrome versions",
@@ -59,8 +90,8 @@
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "react": ">=17",
-    "react-dom": ">=17"
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -69,5 +100,8 @@
     "react-dom": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
