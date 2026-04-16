@@ -1357,7 +1357,12 @@ function updateScrollDepthOverlay(events) {
     if (e.maxDepth > prev) byUrl.set(e.url, e.maxDepth);
   }
   const currentUrl = location.pathname;
-  const depth = byUrl.get(currentUrl) ?? Math.max(...Array.from(byUrl.values()));
+  const depth = byUrl.get(currentUrl) ?? 0;
+  if (depth === 0) {
+    _marker.style.display = "none";
+    _label.style.display = "none";
+    return;
+  }
   const markerY = depth / 100 * window.innerHeight;
   const clampedY = Math.min(Math.max(0, markerY), window.innerHeight - 3);
   _marker.style.top = `${clampedY}px`;

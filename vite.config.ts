@@ -6,7 +6,10 @@ export default defineConfig(({ command }) => {
     // Dev server: serves examples/basic.html with the source loaded directly
     return {
       root: 'examples',
-      server: { open: '/basic.html' },
+      // appType defaults to 'spa', which serves index.html as the fallback for
+      // all unknown routes. This means Vite's full-page reload after a file
+      // change won't 404 when the browser is on a pushState URL like /reports.
+      server: { open: '/' },
       resolve: {
         alias: {
           // Map the CDN script reference to local source so changes hot-reload

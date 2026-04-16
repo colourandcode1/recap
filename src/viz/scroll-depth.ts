@@ -83,9 +83,15 @@ export function updateScrollDepthOverlay(events: ScrollEvent[]): void {
     if (e.maxDepth > prev) byUrl.set(e.url, e.maxDepth);
   }
 
-  // Use current page depth
+  // Use current page depth only — no cross-page fallback
   const currentUrl = location.pathname;
-  const depth = byUrl.get(currentUrl) ?? Math.max(...Array.from(byUrl.values()));
+  const depth = byUrl.get(currentUrl) ?? 0;
+
+  if (depth === 0) {
+    _marker.style.display = 'none';
+    _label.style.display = 'none';
+    return;
+  }
 
   // Position marker and label at depth%
   const markerY = (depth / 100) * window.innerHeight;
