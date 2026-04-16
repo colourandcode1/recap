@@ -531,8 +531,6 @@ function bindEvents(root: HTMLDivElement): void {
           : null,
         label,
       };
-      _activeTab = 'heatmap';
-
       // Navigate the SPA to the target page if needed.
       // Use _origPushState to avoid double-firing handleUrlChange, then dispatch
       // a synthetic popstate so the SPA router re-renders the page content.

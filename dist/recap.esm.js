@@ -2184,7 +2184,6 @@ function bindEvents(root) {
         visitEndMs: visit.duration !== null ? (visit.arrivalTime + visit.duration) * 1e3 : null,
         label
       };
-      _activeTab = "heatmap";
       if (location.pathname !== visit.pagePath) {
         (_origPushState ?? history.pushState).call(history, null, "", visit.pagePath);
         window.dispatchEvent(new PopStateEvent("popstate"));
