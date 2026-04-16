@@ -7,5 +7,7 @@ export declare function detectRapidClick(selector: string, clientX: number, clie
     duration: number;
 };
 type ClickHandler = (event: ClickEvent) => void;
+export declare function pauseClickCapture(): void;
+export declare function resumeClickCapture(): void;
 export declare function initClickCapture(handler: ClickHandler, stripQuery?: boolean): () => void;
 export {};

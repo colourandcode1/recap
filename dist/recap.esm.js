@@ -186,10 +186,17 @@ function extractDataAttributes(el) {
 }
 let _handler$2 = null;
 let _stripQuery$2 = true;
+let _paused = false;
+function pauseClickCapture() {
+  _paused = true;
+}
+function resumeClickCapture() {
+  _paused = false;
+}
 function onDocumentClick(e) {
   try {
     const target = e.target;
-    if (!target || !_handler$2) return;
+    if (!target || !_handler$2 || _paused) return;
     if (isExcluded(target)) return;
     const tag = target.tagName.toUpperCase();
     const viewport = {
@@ -1274,6 +1281,7 @@ function getHeatmapDataURL() {
   return _canvas.toDataURL("image/png");
 }
 let _overlay = null;
+let _marker = null;
 let _label = null;
 function initScrollDepthOverlay() {
   if (_overlay) return;
@@ -1283,7 +1291,7 @@ function initScrollDepthOverlay() {
     position: fixed;
     right: 0;
     top: 0;
-    width: 12px;
+    width: 16px;
     height: 100vh;
     z-index: 9998;
     pointer-events: none;
@@ -1297,27 +1305,43 @@ function initScrollDepthOverlay() {
     transition: opacity 0.3s;
     display: none;
   `;
+  _marker = document.createElement("div");
+  _marker.setAttribute("aria-hidden", "true");
+  _marker.style.cssText = `
+    position: fixed;
+    right: 0;
+    width: 24px;
+    height: 3px;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0,0,0,0.7);
+    z-index: 10000;
+    pointer-events: none;
+    display: none;
+  `;
   _label = document.createElement("div");
   _label.setAttribute("aria-hidden", "true");
   _label.style.cssText = `
     position: fixed;
-    right: 16px;
-    z-index: 9999;
+    right: 28px;
+    z-index: 10000;
     pointer-events: none;
-    font: 11px/1 system-ui, sans-serif;
+    font: bold 12px/1 system-ui, sans-serif;
     color: #fff;
-    background: rgba(0,0,0,0.65);
-    padding: 2px 5px;
-    border-radius: 3px;
+    background: rgba(0,0,0,0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
     display: none;
   `;
   document.body.appendChild(_overlay);
+  document.body.appendChild(_marker);
   document.body.appendChild(_label);
 }
 function updateScrollDepthOverlay(events) {
-  if (!_overlay || !_label) return;
+  if (!_overlay || !_marker || !_label) return;
   if (events.length === 0) {
     _overlay.style.opacity = "0";
+    _marker.style.display = "none";
     _label.style.display = "none";
     return;
   }
@@ -1329,8 +1353,11 @@ function updateScrollDepthOverlay(events) {
   const currentUrl = location.pathname;
   const depth = byUrl.get(currentUrl) ?? Math.max(...Array.from(byUrl.values()));
   const markerY = depth / 100 * window.innerHeight;
-  _label.style.top = `${Math.max(0, markerY - 14)}px`;
-  _label.textContent = `Max scroll: ${depth}%`;
+  const clampedY = Math.min(Math.max(0, markerY), window.innerHeight - 3);
+  _marker.style.top = `${clampedY}px`;
+  _label.style.top = `${Math.max(0, clampedY - 11)}px`;
+  _label.textContent = `◄ ${depth}%`;
+  _marker.style.display = "block";
   _label.style.display = "block";
 }
 function showScrollDepthOverlay(events) {
@@ -1338,10 +1365,9 @@ function showScrollDepthOverlay(events) {
   if (_overlay) {
     _overlay.style.display = "block";
     setTimeout(() => {
-      if (_overlay) _overlay.style.opacity = "0.7";
+      if (_overlay) _overlay.style.opacity = "0.75";
     }, 10);
   }
-  if (_label) _label.style.display = "block";
   updateScrollDepthOverlay(events);
 }
 function hideScrollDepthOverlay() {
@@ -1351,6 +1377,7 @@ function hideScrollDepthOverlay() {
       if (_overlay) _overlay.style.display = "none";
     }, 300);
   }
+  if (_marker) _marker.style.display = "none";
   if (_label) _label.style.display = "none";
 }
 function isScrollDepthVisible() {
@@ -1795,8 +1822,12 @@ async function openPanel() {
     } catch {
     }
     _allEvents = await loadSessionData(_currentSessionId);
+    if (isHeatmapVisible()) {
+      renderHeatmap(getClicks(_allEvents));
+    }
     render(_panelRoot, sessions2);
     _panelRoot.style.display = "flex";
+    pauseClickCapture();
     return;
   }
   injectStyles();
@@ -1811,9 +1842,11 @@ async function openPanel() {
   _panelRoot = document.createElement("div");
   _panelRoot.className = `${PREFIX}-root`;
   _panelRoot.setAttribute("data-recap-panel", "true");
+  _panelRoot.setAttribute("data-ut-no-track", "");
   render(_panelRoot, sessions);
   document.body.appendChild(_panelRoot);
   makeDraggable(_panelRoot);
+  pauseClickCapture();
 }
 function render(root, sessions) {
   const stats = getStats(_allEvents);
@@ -1996,6 +2029,7 @@ function makeDraggable(el) {
 }
 function closePanel() {
   if (_panelRoot) _panelRoot.style.display = "none";
+  resumeClickCapture();
 }
 function isPanelOpen() {
   return _panelRoot !== null && _panelRoot.style.display !== "none";

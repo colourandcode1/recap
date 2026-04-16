@@ -17,6 +17,7 @@ import { showScrollDepthOverlay, hideScrollDepthOverlay, isScrollDepthVisible } 
 import { enterScreenshotMode, downloadHeatmapPNG } from './screenshot.js';
 import { downloadFlowDiagram } from './flow-diagram.js';
 import { getSessionId, getSessionName } from '../capture/session.js';
+import { pauseClickCapture, resumeClickCapture } from '../capture/clicks.js';
 
 const PREFIX = 'recap-panel';
 
@@ -312,8 +313,12 @@ export async function openPanel(): Promise<void> {
     let sessions: Awaited<ReturnType<typeof getAllSessions>> = [];
     try { sessions = await getAllSessions(); } catch { /* ignore */ }
     _allEvents = await loadSessionData(_currentSessionId);
+    if (isHeatmapVisible()) {
+      renderHeatmap(getClicks(_allEvents));
+    }
     render(_panelRoot, sessions);
     _panelRoot.style.display = 'flex';
+    pauseClickCapture();
     return;
   }
 
@@ -334,12 +339,14 @@ export async function openPanel(): Promise<void> {
   _panelRoot = document.createElement('div');
   _panelRoot.className = `${PREFIX}-root`;
   _panelRoot.setAttribute('data-recap-panel', 'true');
+  _panelRoot.setAttribute('data-ut-no-track', '');
 
   render(_panelRoot, sessions);
   document.body.appendChild(_panelRoot);
 
   // Make draggable
   makeDraggable(_panelRoot);
+  pauseClickCapture();
 }
 
 function render(
@@ -586,6 +593,7 @@ function makeDraggable(el: HTMLDivElement): void {
 
 export function closePanel(): void {
   if (_panelRoot) _panelRoot.style.display = 'none';
+  resumeClickCapture();
 }
 
 export function isPanelOpen(): boolean {

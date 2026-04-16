@@ -154,11 +154,15 @@ type ClickHandler = (event: ClickEvent) => void;
 
 let _handler: ClickHandler | null = null;
 let _stripQuery = true;
+let _paused = false;
+
+export function pauseClickCapture(): void { _paused = true; }
+export function resumeClickCapture(): void { _paused = false; }
 
 function onDocumentClick(e: MouseEvent): void {
   try {
     const target = e.target as Element | null;
-    if (!target || !_handler) return;
+    if (!target || !_handler || _paused) return;
 
     // Privacy: skip excluded elements
     if (isExcluded(target)) return;

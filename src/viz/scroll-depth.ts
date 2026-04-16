@@ -3,6 +3,7 @@
 import type { ScrollEvent } from '../types.js';
 
 let _overlay: HTMLDivElement | null = null;
+let _marker: HTMLDivElement | null = null;
 let _label: HTMLDivElement | null = null;
 
 export function initScrollDepthOverlay(): void {
@@ -14,7 +15,7 @@ export function initScrollDepthOverlay(): void {
     position: fixed;
     right: 0;
     top: 0;
-    width: 12px;
+    width: 16px;
     height: 100vh;
     z-index: 9998;
     pointer-events: none;
@@ -29,30 +30,48 @@ export function initScrollDepthOverlay(): void {
     display: none;
   `;
 
+  // Horizontal tick line across the bar — extends slightly left for visibility
+  _marker = document.createElement('div');
+  _marker.setAttribute('aria-hidden', 'true');
+  _marker.style.cssText = `
+    position: fixed;
+    right: 0;
+    width: 24px;
+    height: 3px;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0,0,0,0.7);
+    z-index: 10000;
+    pointer-events: none;
+    display: none;
+  `;
+
   _label = document.createElement('div');
   _label.setAttribute('aria-hidden', 'true');
   _label.style.cssText = `
     position: fixed;
-    right: 16px;
-    z-index: 9999;
+    right: 28px;
+    z-index: 10000;
     pointer-events: none;
-    font: 11px/1 system-ui, sans-serif;
+    font: bold 12px/1 system-ui, sans-serif;
     color: #fff;
-    background: rgba(0,0,0,0.65);
-    padding: 2px 5px;
-    border-radius: 3px;
+    background: rgba(0,0,0,0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
     display: none;
   `;
 
   document.body.appendChild(_overlay);
+  document.body.appendChild(_marker);
   document.body.appendChild(_label);
 }
 
 export function updateScrollDepthOverlay(events: ScrollEvent[]): void {
-  if (!_overlay || !_label) return;
+  if (!_overlay || !_marker || !_label) return;
 
   if (events.length === 0) {
     _overlay.style.opacity = '0';
+    _marker.style.display = 'none';
     _label.style.display = 'none';
     return;
   }
@@ -68,10 +87,14 @@ export function updateScrollDepthOverlay(events: ScrollEvent[]): void {
   const currentUrl = location.pathname;
   const depth = byUrl.get(currentUrl) ?? Math.max(...Array.from(byUrl.values()));
 
-  // Render a marker line at depth%
+  // Position marker and label at depth%
   const markerY = (depth / 100) * window.innerHeight;
-  _label.style.top = `${Math.max(0, markerY - 14)}px`;
-  _label.textContent = `Max scroll: ${depth}%`;
+  const clampedY = Math.min(Math.max(0, markerY), window.innerHeight - 3);
+
+  _marker.style.top = `${clampedY}px`;
+  _label.style.top = `${Math.max(0, clampedY - 11)}px`;
+  _label.textContent = `◄ ${depth}%`;
+  _marker.style.display = 'block';
   _label.style.display = 'block';
 }
 
@@ -79,9 +102,8 @@ export function showScrollDepthOverlay(events: ScrollEvent[]): void {
   if (!_overlay) initScrollDepthOverlay();
   if (_overlay) {
     _overlay.style.display = 'block';
-    setTimeout(() => { if (_overlay) _overlay.style.opacity = '0.7'; }, 10);
+    setTimeout(() => { if (_overlay) _overlay.style.opacity = '0.75'; }, 10);
   }
-  if (_label) _label.style.display = 'block';
   updateScrollDepthOverlay(events);
 }
 
@@ -90,6 +112,7 @@ export function hideScrollDepthOverlay(): void {
     _overlay.style.opacity = '0';
     setTimeout(() => { if (_overlay) _overlay.style.display = 'none'; }, 300);
   }
+  if (_marker) _marker.style.display = 'none';
   if (_label) _label.style.display = 'none';
 }
 
@@ -100,7 +123,9 @@ export function isScrollDepthVisible(): boolean {
 
 export function destroyScrollDepthOverlay(): void {
   _overlay?.parentElement?.removeChild(_overlay);
+  _marker?.parentElement?.removeChild(_marker);
   _label?.parentElement?.removeChild(_label);
   _overlay = null;
+  _marker = null;
   _label = null;
 }
