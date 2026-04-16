@@ -1165,6 +1165,17 @@ let _circle = null;
 let _colorGradient = null;
 let _radius = DEFAULT_RADIUS;
 let _blur = DEFAULT_BLUR;
+let _clicks = [];
+let _scrollScheduled = false;
+function handleScroll() {
+  if (_canvas?.style.display === "none") return;
+  if (_scrollScheduled) return;
+  _scrollScheduled = true;
+  requestAnimationFrame(() => {
+    _scrollScheduled = false;
+    renderHeatmap(_clicks);
+  });
+}
 function createCircle(radius, blur) {
   const r = radius + blur;
   const d = 2 * r;
@@ -1221,6 +1232,7 @@ function initHeatmapCanvas() {
   `;
   _canvas.setAttribute("aria-hidden", "true");
   document.body.appendChild(_canvas);
+  window.addEventListener("scroll", handleScroll, { passive: true });
   _ctx = _canvas.getContext("2d");
   _circle = createCircle(DEFAULT_RADIUS, DEFAULT_BLUR);
   _colorGradient = createColorGradient(DEFAULT_GRADIENT);
@@ -1235,13 +1247,14 @@ function resizeCanvas() {
 }
 function renderHeatmap(clicks) {
   if (!_canvas || !_ctx) return;
+  _clicks = clicks;
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
   if (clicks.length === 0) return;
   _ctx.globalAlpha = 0.05;
   for (const click of clicks) {
     const r = _radius + _blur;
-    _ctx.drawImage(_circle, click.clientX - r, click.clientY - r);
+    _ctx.drawImage(_circle, click.pageX - window.scrollX - r, click.pageY - window.scrollY - r);
   }
   const imageData = _ctx.getImageData(0, 0, _canvas.width, _canvas.height);
   colorize(imageData, _colorGradient);

@@ -35,6 +35,18 @@ let _circle: HTMLCanvasElement | null = null;
 let _colorGradient: Uint8ClampedArray | null = null;
 let _radius = DEFAULT_RADIUS;
 let _blur = DEFAULT_BLUR;
+let _clicks: ClickEvent[] = [];
+let _scrollScheduled = false;
+
+function handleScroll(): void {
+  if (_canvas?.style.display === 'none') return;
+  if (_scrollScheduled) return;
+  _scrollScheduled = true;
+  requestAnimationFrame(() => {
+    _scrollScheduled = false;
+    renderHeatmap(_clicks);
+  });
+}
 
 function createCircle(radius: number, blur: number): HTMLCanvasElement {
   const r = radius + blur;
@@ -96,6 +108,7 @@ export function initHeatmapCanvas(): HTMLCanvasElement {
   `;
   _canvas.setAttribute('aria-hidden', 'true');
   document.body.appendChild(_canvas);
+  window.addEventListener('scroll', handleScroll, { passive: true });
 
   _ctx = _canvas.getContext('2d')!;
   _circle = createCircle(DEFAULT_RADIUS, DEFAULT_BLUR);
@@ -115,17 +128,18 @@ function resizeCanvas(): void {
 export function renderHeatmap(clicks: ClickEvent[]): void {
   if (!_canvas || !_ctx) return;
 
+  _clicks = clicks;
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
 
   if (clicks.length === 0) return;
 
-  // Stamp radial gradient for each click using clientX/clientY (viewport-relative)
+  // Use pageX/pageY (document-relative) adjusted by current scroll offset
+  // so dots stay aligned with page content as the user scrolls.
   _ctx.globalAlpha = 0.05;
   for (const click of clicks) {
     const r = _radius + _blur;
-    // Use clientX/Y which are viewport-relative for the fixed canvas
-    _ctx.drawImage(_circle!, click.clientX - r, click.clientY - r);
+    _ctx.drawImage(_circle!, click.pageX - window.scrollX - r, click.pageY - window.scrollY - r);
   }
 
   // Colorize
@@ -153,6 +167,7 @@ export function getHeatmapDataURL(): string | null {
 
 export function destroyHeatmap(): void {
   if (_canvas) {
+    window.removeEventListener('scroll', handleScroll);
     _canvas.parentElement?.removeChild(_canvas);
     _canvas = null;
     _ctx = null;
