@@ -2242,14 +2242,14 @@ function bindEvents(root, sessions) {
   });
 }
 function makeDraggable(el) {
-  const header = el.querySelector(`.${PREFIX}-header`);
-  if (!header) return;
   let isDragging = false;
   let startX = 0;
   let startY = 0;
   let origRight = 20;
   let origBottom = 20;
-  header.addEventListener("mousedown", (e) => {
+  el.addEventListener("mousedown", (e) => {
+    const header = el.querySelector(`.${PREFIX}-header`);
+    if (!header?.contains(e.target)) return;
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;

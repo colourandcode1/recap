@@ -633,16 +633,17 @@ function bindEvents(
 }
 
 function makeDraggable(el: HTMLDivElement): void {
-  const header = el.querySelector<HTMLDivElement>(`.${PREFIX}-header`);
-  if (!header) return;
-
   let isDragging = false;
   let startX = 0;
   let startY = 0;
   let origRight = 20;
   let origBottom = 20;
 
-  header.addEventListener('mousedown', (e) => {
+  // Listen on the stable root element rather than the header, which gets
+  // replaced on every render() call. Query the header fresh on each mousedown.
+  el.addEventListener('mousedown', (e) => {
+    const header = el.querySelector<HTMLDivElement>(`.${PREFIX}-header`);
+    if (!header?.contains(e.target as Node)) return;
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
