@@ -2272,6 +2272,8 @@ function makeDraggable(el) {
 }
 function closePanel() {
   if (_panelRoot) _panelRoot.style.display = "none";
+  hideHeatmap();
+  hideScrollDepthOverlay();
   resumeClickCapture();
 }
 function isPanelOpen() {

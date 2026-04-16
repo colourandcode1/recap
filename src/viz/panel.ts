@@ -666,6 +666,8 @@ function makeDraggable(el: HTMLDivElement): void {
 
 export function closePanel(): void {
   if (_panelRoot) _panelRoot.style.display = 'none';
+  hideHeatmap();
+  hideScrollDepthOverlay();
   resumeClickCapture();
 }
 
