@@ -1259,9 +1259,10 @@ function renderHeatmap(clicks, filter) {
   _filter = filter ?? null;
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+  const currentPage = location.pathname;
   const visible = _filter ? clicks.filter(
     (c) => c.url === _filter.pagePath && c.timestamp >= _filter.visitStartMs && (_filter.visitEndMs === null || c.timestamp < _filter.visitEndMs)
-  ) : clicks;
+  ) : clicks.filter((c) => c.url === currentPage);
   if (visible.length === 0) return;
   _ctx.globalAlpha = 0.05;
   for (const click of visible) {
@@ -1940,8 +1941,19 @@ let _panelRoot = null;
 let _styleEl = null;
 let _currentSessionId = "";
 let _allEvents = [];
+let _sessions = [];
 let _activeTab = "heatmap";
 let _heatmapFilter = null;
+let _origPushState = null;
+function handleUrlChange() {
+  if (!_panelRoot || _panelRoot.style.display === "none") return;
+  if (_heatmapFilter && _heatmapFilter.pagePath !== location.pathname) {
+    _heatmapFilter = null;
+  }
+  if (isHeatmapVisible()) renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? void 0);
+  if (isScrollDepthVisible()) updateScrollDepthOverlay(getScrolls(_allEvents));
+  render(_panelRoot, _sessions);
+}
 function injectStyles() {
   if (_styleEl) return;
   _styleEl = document.createElement("style");
@@ -2008,25 +2020,23 @@ function getStats(events) {
 }
 async function openPanel() {
   if (_panelRoot) {
-    let sessions2 = [];
     try {
-      sessions2 = await getAllSessions();
+      _sessions = await getAllSessions();
     } catch {
     }
     _allEvents = await loadSessionData(_currentSessionId);
     if (isHeatmapVisible()) {
-      renderHeatmap(getClicks(_allEvents));
+      renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? void 0);
     }
-    render(_panelRoot, sessions2);
+    render(_panelRoot, _sessions);
     _panelRoot.style.display = "flex";
     pauseClickCapture();
     return;
   }
   injectStyles();
   initHeatmapCanvas();
-  let sessions = [];
   try {
-    sessions = await getAllSessions();
+    _sessions = await getAllSessions();
   } catch {
   }
   _currentSessionId = getSessionId();
@@ -2035,8 +2045,14 @@ async function openPanel() {
   _panelRoot.className = `${PREFIX}-root`;
   _panelRoot.setAttribute("data-recap-panel", "true");
   _panelRoot.setAttribute("data-ut-no-track", "");
-  render(_panelRoot, sessions);
+  render(_panelRoot, _sessions);
   document.body.appendChild(_panelRoot);
+  _origPushState = history.pushState.bind(history);
+  history.pushState = function(state, title, url) {
+    _origPushState(state, title, url);
+    handleUrlChange();
+  };
+  window.addEventListener("popstate", handleUrlChange);
   makeDraggable(_panelRoot);
   pauseClickCapture();
 }
@@ -2133,9 +2149,9 @@ function render(root, sessions) {
       <button class="${PREFIX}-clear-link" id="${PREFIX}-btn-clear">Clear all session data</button>
     </div>
   `;
-  bindEvents(root, sessions);
+  bindEvents(root);
 }
-function bindEvents(root, sessions) {
+function bindEvents(root) {
   root.querySelector(`.${PREFIX}-close`)?.addEventListener("click", () => {
     closePanel();
   });
@@ -2146,12 +2162,12 @@ function bindEvents(root, sessions) {
     if (isHeatmapVisible()) {
       renderHeatmap(getClicks(_allEvents));
     }
-    render(root, sessions);
+    render(root, _sessions);
   });
   root.querySelectorAll(`.${PREFIX}-tab`).forEach((btn) => {
     btn.addEventListener("click", () => {
       _activeTab = btn.dataset["tab"] ?? "heatmap";
-      render(root, sessions);
+      render(root, _sessions);
     });
   });
   root.querySelectorAll(`.${PREFIX}-tl-row`).forEach((row) => {
@@ -2169,15 +2185,19 @@ function bindEvents(root, sessions) {
         label
       };
       _activeTab = "heatmap";
+      if (location.pathname !== visit.pagePath) {
+        (_origPushState ?? history.pushState).call(history, null, "", visit.pagePath);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }
       renderHeatmap(getClicks(_allEvents), _heatmapFilter);
       if (!isHeatmapVisible()) showHeatmap();
-      render(root, sessions);
+      render(_panelRoot, _sessions);
     });
   });
   root.querySelector(`#${PREFIX}-btn-clear-filter`)?.addEventListener("click", () => {
     _heatmapFilter = null;
     renderHeatmap(getClicks(_allEvents));
-    render(root, sessions);
+    render(root, _sessions);
   });
   root.querySelector(`#${PREFIX}-toggle-heatmap`)?.addEventListener("click", () => {
     if (isHeatmapVisible()) {
@@ -2186,7 +2206,7 @@ function bindEvents(root, sessions) {
       renderHeatmap(getClicks(_allEvents));
       showHeatmap();
     }
-    render(root, sessions);
+    render(root, _sessions);
   });
   root.querySelector(`#${PREFIX}-toggle-scroll`)?.addEventListener("click", () => {
     if (isScrollDepthVisible()) {
@@ -2194,7 +2214,7 @@ function bindEvents(root, sessions) {
     } else {
       showScrollDepthOverlay(getScrolls(_allEvents));
     }
-    render(root, sessions);
+    render(root, _sessions);
   });
   root.querySelector(`#${PREFIX}-btn-screenshot`)?.addEventListener("click", () => {
     closePanel();
@@ -2234,7 +2254,8 @@ function bindEvents(root, sessions) {
       _heatmapFilter = null;
       hideHeatmap();
       hideScrollDepthOverlay();
-      render(root, []);
+      _sessions = [];
+      render(root, _sessions);
       showToast("All session data cleared.");
     } catch (err) {
       console.error("[Recap] Clear error:", err);

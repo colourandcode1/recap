@@ -14,7 +14,7 @@ import {
   initHeatmapCanvas,
   type HeatmapFilter,
 } from './heatmap.js';
-import { showScrollDepthOverlay, hideScrollDepthOverlay, isScrollDepthVisible } from './scroll-depth.js';
+import { showScrollDepthOverlay, hideScrollDepthOverlay, isScrollDepthVisible, updateScrollDepthOverlay } from './scroll-depth.js';
 import { enterScreenshotMode, downloadHeatmapPNG } from './screenshot.js';
 import { downloadFlowDiagram } from './flow-diagram.js';
 import { getSessionId, getSessionName } from '../capture/session.js';
@@ -227,8 +227,21 @@ let _panelRoot: HTMLDivElement | null = null;
 let _styleEl: HTMLStyleElement | null = null;
 let _currentSessionId: string = '';
 let _allEvents: AnyEvent[] = [];
+let _sessions: Awaited<ReturnType<typeof getAllSessions>> = [];
 let _activeTab: 'heatmap' | 'timeline' = 'heatmap';
 let _heatmapFilter: HeatmapFilter | null = null;
+let _origPushState: typeof history.pushState | null = null;
+
+function handleUrlChange(): void {
+  if (!_panelRoot || _panelRoot.style.display === 'none') return;
+  // Clear a visit-scoped filter if the user has navigated to a different page
+  if (_heatmapFilter && _heatmapFilter.pagePath !== location.pathname) {
+    _heatmapFilter = null;
+  }
+  if (isHeatmapVisible()) renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? undefined);
+  if (isScrollDepthVisible()) updateScrollDepthOverlay(getScrolls(_allEvents));
+  render(_panelRoot, _sessions);
+}
 
 function injectStyles(): void {
   if (_styleEl) return;
@@ -315,13 +328,12 @@ function getStats(events: AnyEvent[]): {
 export async function openPanel(): Promise<void> {
   if (_panelRoot) {
     // Refresh data each time the panel is re-opened
-    let sessions: Awaited<ReturnType<typeof getAllSessions>> = [];
-    try { sessions = await getAllSessions(); } catch { /* ignore */ }
+    try { _sessions = await getAllSessions(); } catch { /* ignore */ }
     _allEvents = await loadSessionData(_currentSessionId);
     if (isHeatmapVisible()) {
-      renderHeatmap(getClicks(_allEvents));
+      renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? undefined);
     }
-    render(_panelRoot, sessions);
+    render(_panelRoot, _sessions);
     _panelRoot.style.display = 'flex';
     pauseClickCapture();
     return;
@@ -331,10 +343,7 @@ export async function openPanel(): Promise<void> {
   initHeatmapCanvas();
 
   // Load sessions
-  let sessions: Awaited<ReturnType<typeof getAllSessions>> = [];
-  try {
-    sessions = await getAllSessions();
-  } catch { /* ignore */ }
+  try { _sessions = await getAllSessions(); } catch { /* ignore */ }
 
   // Default to current session
   _currentSessionId = getSessionId();
@@ -346,8 +355,16 @@ export async function openPanel(): Promise<void> {
   _panelRoot.setAttribute('data-recap-panel', 'true');
   _panelRoot.setAttribute('data-ut-no-track', '');
 
-  render(_panelRoot, sessions);
+  render(_panelRoot, _sessions);
   document.body.appendChild(_panelRoot);
+
+  // Listen for SPA navigation so overlays stay in sync with the current page
+  _origPushState = history.pushState.bind(history);
+  history.pushState = function (state: unknown, title: string, url?: string | URL | null) {
+    _origPushState!(state, title, url);
+    handleUrlChange();
+  };
+  window.addEventListener('popstate', handleUrlChange);
 
   // Make draggable
   makeDraggable(_panelRoot);
@@ -465,13 +482,10 @@ function render(
     </div>
   `;
 
-  bindEvents(root, sessions);
+  bindEvents(root);
 }
 
-function bindEvents(
-  root: HTMLDivElement,
-  sessions: Awaited<ReturnType<typeof getAllSessions>>
-): void {
+function bindEvents(root: HTMLDivElement): void {
   // Close
   root.querySelector<HTMLButtonElement>(`.${PREFIX}-close`)?.addEventListener('click', () => {
     closePanel();
@@ -483,22 +497,22 @@ function bindEvents(
     ?.addEventListener('change', async (e) => {
       _currentSessionId = (e.target as HTMLSelectElement).value;
       _allEvents = await loadSessionData(_currentSessionId);
-      _heatmapFilter = null; // clear filter when switching sessions
+      _heatmapFilter = null;
       if (isHeatmapVisible()) {
         renderHeatmap(getClicks(_allEvents));
       }
-      render(root, sessions);
+      render(root, _sessions);
     });
 
   // Tab switching
   root.querySelectorAll<HTMLButtonElement>(`.${PREFIX}-tab`).forEach((btn) => {
     btn.addEventListener('click', () => {
       _activeTab = (btn.dataset['tab'] as 'heatmap' | 'timeline') ?? 'heatmap';
-      render(root, sessions);
+      render(root, _sessions);
     });
   });
 
-  // Timeline row click → switch to heatmap tab with visit filter
+  // Timeline row click → navigate to page, switch to heatmap tab, apply visit filter
   root.querySelectorAll<HTMLDivElement>(`.${PREFIX}-tl-row`).forEach((row) => {
     row.addEventListener('click', () => {
       const visitIndex = parseInt(row.dataset['visitIndex'] ?? '0', 10);
@@ -517,11 +531,19 @@ function bindEvents(
           : null,
         label,
       };
-
       _activeTab = 'heatmap';
+
+      // Navigate the SPA to the target page if needed.
+      // Use _origPushState to avoid double-firing handleUrlChange, then dispatch
+      // a synthetic popstate so the SPA router re-renders the page content.
+      if (location.pathname !== visit.pagePath) {
+        (_origPushState ?? history.pushState).call(history, null, '', visit.pagePath);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+
       renderHeatmap(getClicks(_allEvents), _heatmapFilter);
       if (!isHeatmapVisible()) showHeatmap();
-      render(root, sessions);
+      render(_panelRoot!, _sessions);
     });
   });
 
@@ -531,7 +553,7 @@ function bindEvents(
     ?.addEventListener('click', () => {
       _heatmapFilter = null;
       renderHeatmap(getClicks(_allEvents));
-      render(root, sessions);
+      render(root, _sessions);
     });
 
   // Heatmap toggle
@@ -544,7 +566,7 @@ function bindEvents(
         renderHeatmap(getClicks(_allEvents));
         showHeatmap();
       }
-      render(root, sessions);
+      render(root, _sessions);
     });
 
   // Scroll depth toggle
@@ -556,7 +578,7 @@ function bindEvents(
       } else {
         showScrollDepthOverlay(getScrolls(_allEvents));
       }
-      render(root, sessions);
+      render(root, _sessions);
     });
 
   // Screenshot mode
@@ -624,7 +646,8 @@ function bindEvents(
         _heatmapFilter = null;
         hideHeatmap();
         hideScrollDepthOverlay();
-        render(root, []);
+        _sessions = [];
+        render(root, _sessions);
         showToast('All session data cleared.');
       } catch (err) {
         console.error('[Recap] Clear error:', err);
@@ -677,6 +700,11 @@ export function isPanelOpen(): boolean {
 }
 
 export function destroyPanel(): void {
+  if (_origPushState) {
+    history.pushState = _origPushState;
+    _origPushState = null;
+  }
+  window.removeEventListener('popstate', handleUrlChange);
   _panelRoot?.parentElement?.removeChild(_panelRoot);
   _styleEl?.parentElement?.removeChild(_styleEl);
   _panelRoot = null;

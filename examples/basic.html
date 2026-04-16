@@ -3,170 +3,603 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Recap UX — Basic Demo</title>
+  <title>DemoApp</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; color: #1a202c; }
+    body { font-family: system-ui, -apple-system, sans-serif; color: #1a202c; background: #f7fafc; }
+
+    /* Header */
     header {
-      background: #2b6cb0; color: white; padding: 20px 40px;
+      background: #2b6cb0; color: white; padding: 0 40px;
       display: flex; justify-content: space-between; align-items: center;
+      height: 56px; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    nav a { color: #bee3f8; text-decoration: none; margin-left: 20px; }
-    nav a:hover { color: white; }
-    .hero {
-      padding: 80px 40px; text-align: center; background: #ebf8ff;
+    .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em; }
+    nav { display: flex; gap: 4px; }
+    nav a {
+      color: #bee3f8; text-decoration: none; padding: 6px 14px;
+      border-radius: 4px; font-size: 0.9rem; transition: background 0.15s, color 0.15s;
+      border-bottom: 2px solid transparent;
     }
-    .hero h1 { font-size: 2.5rem; margin-bottom: 16px; }
-    .hero p { font-size: 1.1rem; color: #4a5568; max-width: 600px; margin: 0 auto 32px; }
-    .btn {
-      display: inline-block; padding: 12px 28px; border-radius: 6px;
-      font-size: 1rem; cursor: pointer; border: none; font-family: system-ui;
-    }
-    .btn-primary { background: #2b6cb0; color: white; }
-    .btn-secondary { background: white; color: #2b6cb0; border: 2px solid #2b6cb0; margin-left: 12px; }
-    .features {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
-      padding: 60px 40px; max-width: 1200px; margin: 0 auto;
-    }
-    .feature {
-      background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-      padding: 24px;
-    }
-    .feature h3 { margin-bottom: 8px; }
-    .feature p { color: #718096; font-size: 0.9rem; }
-    .section {
-      padding: 60px 40px; max-width: 1200px; margin: 0 auto;
-    }
-    .section h2 { font-size: 1.8rem; margin-bottom: 24px; }
-    .filter-panel {
-      background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px;
-      padding: 20px; margin-bottom: 24px;
-    }
-    .filter-panel h3 { margin-bottom: 12px; }
-    .filter-item {
-      display: inline-block; padding: 6px 14px; margin: 4px;
-      background: white; border: 1px solid #e2e8f0; border-radius: 20px;
-      cursor: pointer; font-size: 0.85rem;
-    }
-    .filter-item:hover { background: #ebf8ff; border-color: #4299e1; }
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table th, .data-table td {
-      padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0;
-    }
-    .data-table th { background: #f7fafc; font-weight: 600; }
-    .data-table tr:hover { background: #f7fafc; }
+    nav a:hover { color: white; background: rgba(255,255,255,0.1); }
+    nav a.active { color: white; border-bottom-color: #63b3ed; }
+
+    /* Layout */
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 40px; min-height: calc(100vh - 116px); }
     footer {
-      background: #2d3748; color: #a0aec0; padding: 40px;
-      text-align: center; margin-top: 60px;
+      background: #2d3748; color: #a0aec0; padding: 24px 40px;
+      text-align: center; font-size: 0.85rem;
     }
-    .ut-block {
-      background: #e2e8f0; padding: 20px; border-radius: 4px;
-      color: #718096; text-align: center; margin: 20px 0;
+    footer kbd {
+      background: #4a5568; color: #e2e8f0; padding: 2px 6px;
+      border-radius: 3px; font-size: 0.8rem;
     }
 
-    /* Tall page for scroll testing */
-    .spacer { height: 600px; background: linear-gradient(to bottom, #ebf8ff, #bee3f8); display: flex; align-items: center; justify-content: center; color: #4a5568; }
+    /* Page headings */
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-size: 1.6rem; font-weight: 700; color: #1a202c; }
+    .page-header p { color: #718096; margin-top: 4px; font-size: 0.95rem; }
+
+    /* Metric cards */
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .metric-card {
+      background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 20px 24px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .metric-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #bee3f8; }
+    .metric-card .value { font-size: 2rem; font-weight: 700; color: #2b6cb0; line-height: 1; }
+    .metric-card .label { font-size: 0.8rem; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
+    .metric-card .delta { font-size: 0.8rem; color: #48bb78; margin-top: 4px; }
+    .metric-card .delta.down { color: #fc8181; }
+
+    /* Cards / panels */
+    .card {
+      background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 24px; margin-bottom: 24px;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; color: #2d3748; margin-bottom: 16px; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      padding: 10px 14px; text-align: left; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #718096;
+      border-bottom: 2px solid #e2e8f0; background: #f7fafc;
+    }
+    .data-table td { padding: 12px 14px; border-bottom: 1px solid #edf2f7; font-size: 0.9rem; }
+    .data-table tbody tr { cursor: pointer; transition: background 0.1s; }
+    .data-table tbody tr:hover { background: #ebf8ff; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Buttons */
+    .btn {
+      display: inline-block; padding: 9px 20px; border-radius: 5px;
+      font-size: 0.9rem; cursor: pointer; border: none; font-family: inherit;
+      font-weight: 500; transition: background 0.15s;
+    }
+    .btn-primary { background: #2b6cb0; color: white; }
+    .btn-primary:hover { background: #2c5282; }
+    .btn-secondary { background: white; color: #2b6cb0; border: 1.5px solid #bee3f8; }
+    .btn-secondary:hover { background: #ebf8ff; }
+    .btn-danger { background: #fff5f5; color: #c53030; border: 1.5px solid #fed7d7; }
+    .btn-danger:hover { background: #fed7d7; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Tags / badges */
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 500;
+    }
+    .tag-green { background: #c6f6d5; color: #276749; }
+    .tag-blue  { background: #bee3f8; color: #2b6cb0; }
+    .tag-amber { background: #fefcbf; color: #975a16; }
+    .tag-red   { background: #fed7d7; color: #9b2c2c; }
+    .tag-grey  { background: #e2e8f0; color: #4a5568; }
+
+    /* Filter chips */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .chip {
+      padding: 5px 14px; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+      border: 1.5px solid #e2e8f0; background: white; color: #4a5568;
+      transition: all 0.15s; user-select: none;
+    }
+    .chip:hover { border-color: #4299e1; color: #2b6cb0; }
+    .chip.active { background: #2b6cb0; border-color: #2b6cb0; color: white; }
+
+    /* Breadcrumb */
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #718096; margin-bottom: 20px; }
+    .breadcrumb a { color: #4299e1; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: #a0aec0; }
+
+    /* Chart placeholder */
+    .chart-placeholder {
+      background: linear-gradient(135deg, #ebf8ff 0%, #e0f2fe 100%);
+      border: 1px dashed #90cdf4; border-radius: 6px;
+      height: 280px; display: flex; align-items: center; justify-content: center;
+      color: #4299e1; font-size: 0.9rem; cursor: pointer;
+    }
+    .chart-placeholder:hover { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+
+    /* Settings rows */
+    .settings-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid #edf2f7;
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row .info h4 { font-size: 0.9rem; font-weight: 500; }
+    .settings-row .info p { font-size: 0.8rem; color: #718096; margin-top: 2px; }
+    .toggle {
+      width: 40px; height: 22px; background: #48bb78; border-radius: 11px;
+      cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+    }
+    .toggle.off { background: #cbd5e0; }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; background: white; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle.off::after { transform: none; }
+    .toggle:not(.off)::after { transform: translateX(18px); }
+
+    /* Spacer for scroll depth testing */
+    .spacer {
+      height: 480px; background: linear-gradient(to bottom, #ebf8ff, #e0f2fe);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      color: #4299e1; font-size: 0.9rem; margin: 24px 0;
+      border: 1px solid #bee3f8;
+    }
+
+    /* Section divider */
+    .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .section-row h2 { font-size: 1rem; font-weight: 600; color: #2d3748; }
+
+    /* Danger zone */
+    .danger-zone { border: 1px solid #fed7d7; border-radius: 8px; padding: 20px; }
+    .danger-zone h3 { color: #c53030; font-size: 0.9rem; margin-bottom: 12px; }
+
+    /* Profile field */
+    .profile-field { padding: 12px 0; border-bottom: 1px solid #edf2f7; }
+    .profile-field:last-child { border-bottom: none; }
+    .profile-field label { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #718096; margin-bottom: 4px; }
+    .profile-field .value { font-size: 0.95rem; color: #2d3748; }
+    .profile-field .edit-link { font-size: 0.8rem; color: #4299e1; cursor: pointer; float: right; }
+    .profile-field .edit-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 
   <header>
-    <div style="font-weight: 700; font-size: 1.2rem;">DemoApp</div>
-    <nav>
-      <a href="/">Dashboard</a>
-      <a href="/reports" data-ut-label="Reports nav link">Reports</a>
-      <a href="/settings">Settings</a>
+    <div class="logo">DemoApp</div>
+    <nav id="nav">
+      <a href="/" data-ut-label="Dashboard nav">Dashboard</a>
+      <a href="/reports" data-ut-label="Reports nav">Reports</a>
+      <a href="/settings" data-ut-label="Settings nav">Settings</a>
     </nav>
   </header>
 
-  <section class="hero">
-    <h1>Usability Testing Demo</h1>
-    <p>This page is instrumented with Recap UX for demonstration purposes.
-       Click around to generate heatmap data, then press <kbd>Alt+Shift+R</kbd> to open the researcher panel.</p>
-    <button class="btn btn-primary" data-ut-label="Primary CTA">View Reports</button>
-    <button class="btn btn-secondary">Learn More</button>
-  </section>
-
-  <div class="features">
-    <div class="feature">
-      <h3>Click Tracking</h3>
-      <p>Every click is captured with viewport coordinates, element selector, and the nearest heading for context.</p>
-    </div>
-    <div class="feature">
-      <h3>Scroll Depth</h3>
-      <p>Scroll milestones at 25%, 50%, 75%, and 100% are tracked using IntersectionObserver — zero performance cost.</p>
-    </div>
-    <div class="feature">
-      <h3>Navigation Flow</h3>
-      <p>Page transitions are tracked by wrapping the History API. Works with any SPA framework.</p>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Filters</h2>
-    <div class="filter-panel">
-      <h3>Filter by</h3>
-      <div class="filter-item">All time</div>
-      <div class="filter-item">Last 7 days</div>
-      <div class="filter-item">Last 30 days</div>
-      <div class="filter-item" data-ut-label="Custom date range filter">Custom range</div>
-    </div>
-
-    <div class="ut-block">
-      This section is excluded from tracking (.ut-block)
-      <p>Clicks and content inside here are not recorded.</p>
-    </div>
-
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Page</th>
-          <th>Sessions</th>
-          <th>Avg. time</th>
-          <th>Bounce rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>/dashboard</td><td>124</td><td>2m 14s</td><td>12%</td></tr>
-        <tr><td>/reports</td><td>89</td><td>4m 32s</td><td>8%</td></tr>
-        <tr><td>/settings</td><td>34</td><td>1m 45s</td><td>45%</td></tr>
-        <tr><td>/onboarding</td><td>67</td><td>6m 10s</td><td>22%</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="spacer">
-    ↓ Scroll to test scroll depth tracking (this is the 50% mark)
-  </div>
-
-  <div class="section">
-    <h2>More Content Below the Fold</h2>
-    <p>Content that's further down the page can reveal how much of your design users actually see.</p>
-    <br />
-    <button class="btn btn-primary" data-ut-label="Below fold CTA">Take Action</button>
-  </div>
-
-  <div class="spacer">
-    ↓ This is the 75% mark — are users still here?
-  </div>
-
-  <div class="section">
-    <h2>Footer Content</h2>
-    <p>Very few users reach this point. The scroll depth overlay will visualize this clearly.</p>
-  </div>
+  <main id="app"><!-- content renders here --></main>
 
   <footer>
-    <p>Recap UX Demo — Press <strong>Alt+Shift+R</strong> to open the researcher panel</p>
-    <p style="margin-top: 8px; font-size: 0.85rem;">
-      Elements with <code>.ut-block</code> are excluded · Elements with <code>data-ut-no-track</code> are excluded ·
-      <span class="ut-mask">This masked text won't be captured</span>
-    </p>
+    <p>DemoApp — Recap UX Demo &nbsp;·&nbsp; Press <kbd>Alt+Shift+R</kbd> to open the researcher panel</p>
   </footer>
 
-  <!-- Loaded as a module by Vite dev server, or swap for CDN/dist in production -->
   <script type="module">
     import { Recap } from 'recap-ux';
-    Recap.init({ showPanel: true, sessionName: 'demo-session' });
+    Recap.init({ showPanel: false, sessionName: 'demo-session' });
+
+    // ── Page content ───────────────────────────────────────────────────────────
+
+    function pageDashboard() {
+      return `
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p>Welcome back. Here's what's happening with your prototype today.</p>
+        </div>
+
+        <div class="metrics">
+          <div class="metric-card" data-ut-label="Sessions metric">
+            <div class="value">1,284</div>
+            <div class="label">Total Sessions</div>
+            <div class="delta">↑ 12% this week</div>
+          </div>
+          <div class="metric-card" data-ut-label="Reports metric">
+            <div class="value">38</div>
+            <div class="label">Reports Generated</div>
+            <div class="delta">↑ 4 new today</div>
+          </div>
+          <div class="metric-card" data-ut-label="Users metric">
+            <div class="value">94</div>
+            <div class="label">Active Users</div>
+            <div class="delta down">↓ 3% vs last week</div>
+          </div>
+          <div class="metric-card" data-ut-label="Duration metric">
+            <div class="value">3m 42s</div>
+            <div class="label">Avg. Session Duration</div>
+            <div class="delta">↑ 8s improvement</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-row">
+            <h2>Recent Reports</h2>
+            <a href="/reports" class="btn btn-secondary btn-sm" data-ut-label="View all reports">View all</a>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Report name</th>
+                <th>Created</th>
+                <th>Sessions</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-href="/reports/detail" data-ut-label="Report row: Q1 Performance">
+                <td>Q1 Performance Report</td><td>Today, 9:14am</td><td>124</td>
+                <td><span class="tag tag-green">Complete</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report row: Onboarding Flow">
+                <td>Onboarding Flow Analysis</td><td>Yesterday</td><td>89</td>
+                <td><span class="tag tag-blue">In review</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report row: Mobile Checkout">
+                <td>Mobile Checkout Usability</td><td>Apr 12</td><td>67</td>
+                <td><span class="tag tag-amber">Draft</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report row: Navigation Patterns">
+                <td>Navigation Patterns</td><td>Apr 10</td><td>201</td>
+                <td><span class="tag tag-green">Complete</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="spacer">↓ Scroll to test scroll depth tracking</div>
+
+        <div class="card">
+          <h2>Quick Actions</h2>
+          <div class="btn-row">
+            <a href="/reports" class="btn btn-primary" data-ut-label="Create new report CTA">Create Report</a>
+            <a href="/settings" class="btn btn-secondary" data-ut-label="Manage team CTA">Manage Settings</a>
+          </div>
+        </div>
+
+        <div class="spacer">↓ 75% scroll mark — footer content below</div>
+
+        <div class="card">
+          <h2>Usage This Month</h2>
+          <div class="chart-placeholder" data-ut-label="Usage chart">📊 &nbsp; Chart visualisation — click to expand</div>
+        </div>
+      `;
+    }
+
+    function pageReports() {
+      return `
+        <div class="page-header">
+          <h1>Reports</h1>
+          <p>All usability reports for your prototype sessions.</p>
+        </div>
+
+        <div class="card">
+          <div class="section-row">
+            <div class="filter-bar" style="margin:0">
+              <div class="chip active" data-ut-label="Filter: All time">All time</div>
+              <div class="chip" data-ut-label="Filter: Last 7 days">Last 7 days</div>
+              <div class="chip" data-ut-label="Filter: Last 30 days">Last 30 days</div>
+              <div class="chip" data-ut-label="Filter: Custom range">Custom range</div>
+            </div>
+            <button class="btn btn-primary btn-sm" data-ut-label="New report button">+ New Report</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Report name</th>
+                <th>Date</th>
+                <th>Sessions</th>
+                <th>Avg. duration</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-href="/reports/detail" data-ut-label="Report: Q1 Performance">
+                <td><strong>Q1 Performance Report</strong></td><td>Apr 16, 2026</td><td>124</td><td>3m 42s</td>
+                <td><span class="tag tag-green">Complete</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Onboarding Flow">
+                <td><strong>Onboarding Flow Analysis</strong></td><td>Apr 15, 2026</td><td>89</td><td>6m 10s</td>
+                <td><span class="tag tag-blue">In review</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Mobile Checkout">
+                <td><strong>Mobile Checkout Usability</strong></td><td>Apr 12, 2026</td><td>67</td><td>4m 55s</td>
+                <td><span class="tag tag-amber">Draft</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Navigation Patterns">
+                <td><strong>Navigation Patterns</strong></td><td>Apr 10, 2026</td><td>201</td><td>2m 18s</td>
+                <td><span class="tag tag-green">Complete</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Signup Funnel">
+                <td><strong>Signup Funnel Drop-off</strong></td><td>Apr 8, 2026</td><td>312</td><td>1m 47s</td>
+                <td><span class="tag tag-green">Complete</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Settings Discoverability">
+                <td><strong>Settings Discoverability</strong></td><td>Apr 5, 2026</td><td>44</td><td>5m 02s</td>
+                <td><span class="tag tag-grey">Archived</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="spacer">↓ Scroll to see older reports</div>
+
+        <div class="card">
+          <h2>Archived Reports (Q3 2025)</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Report name</th><th>Date</th><th>Sessions</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr data-href="/reports/detail" data-ut-label="Report: Homepage Redesign">
+                <td>Homepage Redesign Test</td><td>Sep 14, 2025</td><td>58</td>
+                <td><span class="tag tag-grey">Archived</span></td>
+              </tr>
+              <tr data-href="/reports/detail" data-ut-label="Report: Search UX">
+                <td>Search UX Evaluation</td><td>Sep 2, 2025</td><td>73</td>
+                <td><span class="tag tag-grey">Archived</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function pageReportDetail() {
+      return `
+        <div class="breadcrumb">
+          <a href="/reports" data-ut-label="Breadcrumb: Reports">Reports</a>
+          <span>›</span>
+          <span>Q1 Performance Report</span>
+        </div>
+
+        <div class="page-header">
+          <h1>Q1 Performance Report</h1>
+          <p>Usability testing results · 124 sessions · Apr 16, 2026</p>
+        </div>
+
+        <div class="metrics" style="grid-template-columns: repeat(4, 1fr)">
+          <div class="metric-card" data-ut-label="Report stat: Sessions">
+            <div class="value">124</div>
+            <div class="label">Sessions</div>
+          </div>
+          <div class="metric-card" data-ut-label="Report stat: Avg duration">
+            <div class="value">3m 42s</div>
+            <div class="label">Avg. Duration</div>
+          </div>
+          <div class="metric-card" data-ut-label="Report stat: Task success">
+            <div class="value">78%</div>
+            <div class="label">Task Success</div>
+            <div class="delta">↑ 6% vs previous</div>
+          </div>
+          <div class="metric-card" data-ut-label="Report stat: Satisfaction">
+            <div class="value">4.2</div>
+            <div class="label">Satisfaction /5</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-row">
+            <h2>Click Heatmap</h2>
+            <div class="btn-row">
+              <button class="btn btn-secondary btn-sm" data-ut-label="Export report">Export</button>
+              <button class="btn btn-secondary btn-sm" data-ut-label="Share report">Share</button>
+            </div>
+          </div>
+          <div class="chart-placeholder" style="height:320px" data-ut-label="Heatmap visualisation">
+            🔥 &nbsp; Click heatmap — 124 sessions overlaid
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Session Recordings</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Participant</th><th>Duration</th><th>Pages visited</th><th>Task outcome</th></tr>
+            </thead>
+            <tbody>
+              <tr data-ut-label="Session: P01"><td>Participant 01</td><td>4m 12s</td><td>6</td><td><span class="tag tag-green">Success</span></td></tr>
+              <tr data-ut-label="Session: P02"><td>Participant 02</td><td>2m 58s</td><td>4</td><td><span class="tag tag-green">Success</span></td></tr>
+              <tr data-ut-label="Session: P03"><td>Participant 03</td><td>6m 44s</td><td>9</td><td><span class="tag tag-amber">Partial</span></td></tr>
+              <tr data-ut-label="Session: P04"><td>Participant 04</td><td>1m 33s</td><td>3</td><td><span class="tag tag-red">Abandoned</span></td></tr>
+              <tr data-ut-label="Session: P05"><td>Participant 05</td><td>3m 20s</td><td>5</td><td><span class="tag tag-green">Success</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="spacer">↓ Findings and recommendations below</div>
+
+        <div class="card">
+          <h2>Key Findings</h2>
+          <p style="color:#4a5568;line-height:1.7;margin-bottom:12px">
+            78% of participants successfully completed the primary task, up from 72% in the previous round.
+            The main friction point remains the filter panel on the reports list — 3 of 5 participants
+            attempted to use the search bar before finding the filter chips.
+          </p>
+          <p style="color:#4a5568;line-height:1.7">
+            Participants who visited the Settings page before completing the task took on average 40% longer,
+            suggesting the settings navigation may be drawing attention away from the primary flow.
+          </p>
+        </div>
+
+        <div style="margin-top: 8px">
+          <a href="/reports" class="btn btn-secondary" data-ut-label="Back to reports">← Back to Reports</a>
+        </div>
+      `;
+    }
+
+    function pageSettings() {
+      return `
+        <div class="page-header">
+          <h1>Settings</h1>
+          <p>Manage your account preferences and team configuration.</p>
+        </div>
+
+        <div class="card">
+          <h2>Profile</h2>
+          <div class="profile-field">
+            <label>Full name</label>
+            <div class="value">Alex Johnson <span class="edit-link" data-ut-label="Edit name">Edit</span></div>
+          </div>
+          <div class="profile-field">
+            <label>Email address</label>
+            <div class="value">alex@demoapp.io <span class="edit-link" data-ut-label="Edit email">Edit</span></div>
+          </div>
+          <div class="profile-field">
+            <label>Role</label>
+            <div class="value">UX Researcher</div>
+          </div>
+          <div class="profile-field">
+            <label>Organisation</label>
+            <div class="value">DemoApp Ltd <span class="edit-link" data-ut-label="Edit org">Edit</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Notifications</h2>
+          <div class="settings-row">
+            <div class="info">
+              <h4>Report completed</h4>
+              <p>Get notified when a usability report is ready to review</p>
+            </div>
+            <div class="toggle" data-ut-label="Toggle: Report completed"></div>
+          </div>
+          <div class="settings-row">
+            <div class="info">
+              <h4>New session recorded</h4>
+              <p>Alert when a participant completes a session</p>
+            </div>
+            <div class="toggle" data-ut-label="Toggle: New session"></div>
+          </div>
+          <div class="settings-row">
+            <div class="info">
+              <h4>Weekly digest</h4>
+              <p>Summary of activity across all your prototypes</p>
+            </div>
+            <div class="toggle off" data-ut-label="Toggle: Weekly digest"></div>
+          </div>
+          <div class="settings-row">
+            <div class="info">
+              <h4>Team activity</h4>
+              <p>Notify when teammates add comments or edit reports</p>
+            </div>
+            <div class="toggle off" data-ut-label="Toggle: Team activity"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Integrations</h2>
+          <div class="settings-row">
+            <div class="info">
+              <h4>Figma</h4>
+              <p>Link prototypes directly from your Figma workspace</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" data-ut-label="Connect Figma">Connect</button>
+          </div>
+          <div class="settings-row">
+            <div class="info">
+              <h4>Slack</h4>
+              <p>Post report summaries to a Slack channel</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" data-ut-label="Connect Slack">Connect</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 24px">
+          <button class="btn btn-primary" data-ut-label="Save settings">Save changes</button>
+        </div>
+
+        <div class="danger-zone">
+          <h3>Danger Zone</h3>
+          <div class="settings-row" style="border:none;padding-top:0">
+            <div class="info">
+              <h4>Delete account</h4>
+              <p>Permanently remove your account and all associated data</p>
+            </div>
+            <button class="btn btn-danger btn-sm" data-ut-label="Delete account">Delete account</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Router ─────────────────────────────────────────────────────────────────
+
+    const PAGES = {
+      '/':               pageDashboard,
+      '/reports':        pageReports,
+      '/reports/detail': pageReportDetail,
+      '/settings':       pageSettings,
+    };
+
+    function renderPage(path) {
+      const render = PAGES[path] ?? PAGES['/'];
+      document.getElementById('app').innerHTML = render();
+
+      // Update active nav link
+      document.querySelectorAll('#nav a').forEach(a => {
+        const href = new URL(a.href).pathname;
+        const isActive = path === href || (href !== '/' && path.startsWith(href));
+        a.classList.toggle('active', isActive);
+      });
+
+      // Wire up table row clicks (data-href attribute)
+      document.querySelectorAll('[data-href]').forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('a, button')) return;
+          navigate(row.dataset.href);
+        });
+      });
+
+      // Wire up chip toggle (purely visual)
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          chip.closest('.filter-bar')?.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+        });
+      });
+
+      // Wire up notification toggles (purely visual)
+      document.querySelectorAll('.toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => toggle.classList.toggle('off'));
+      });
+
+      window.scrollTo(0, 0);
+    }
+
+    function navigate(path) {
+      if (path === location.pathname) return;
+      history.pushState(null, '', path);
+      renderPage(path);
+    }
+
+    // Intercept all same-origin <a> clicks
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      const url = new URL(a.href, location.origin);
+      if (url.origin !== location.origin) return;
+      e.preventDefault();
+      navigate(url.pathname);
+    });
+
+    // Browser back / forward
+    window.addEventListener('popstate', () => renderPage(location.pathname));
+
+    // Initial render
+    renderPage(location.pathname);
   </script>
 
 </body>

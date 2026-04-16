@@ -141,7 +141,8 @@ export function renderHeatmap(clicks: ClickEvent[], filter?: HeatmapFilter): voi
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
 
-  // Apply optional page-visit filter
+  // Apply filter: a specific visit's time range if set, otherwise scope to current page
+  const currentPage = location.pathname;
   const visible = _filter
     ? clicks.filter(
         (c) =>
@@ -149,7 +150,7 @@ export function renderHeatmap(clicks: ClickEvent[], filter?: HeatmapFilter): voi
           c.timestamp >= _filter!.visitStartMs &&
           (_filter!.visitEndMs === null || c.timestamp < _filter!.visitEndMs)
       )
-    : clicks;
+    : clicks.filter((c) => c.url === currentPage);
 
   if (visible.length === 0) return;
 
