@@ -1273,7 +1273,89 @@ function getHeatmapDataURL() {
   if (!_canvas) return null;
   return _canvas.toDataURL("image/png");
 }
+let _overlay = null;
+let _label = null;
+function initScrollDepthOverlay() {
+  if (_overlay) return;
+  _overlay = document.createElement("div");
+  _overlay.setAttribute("aria-hidden", "true");
+  _overlay.style.cssText = `
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 12px;
+    height: 100vh;
+    z-index: 9998;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      #22c55e 0%,
+      #eab308 50%,
+      #ef4444 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s;
+    display: none;
+  `;
+  _label = document.createElement("div");
+  _label.setAttribute("aria-hidden", "true");
+  _label.style.cssText = `
+    position: fixed;
+    right: 16px;
+    z-index: 9999;
+    pointer-events: none;
+    font: 11px/1 system-ui, sans-serif;
+    color: #fff;
+    background: rgba(0,0,0,0.65);
+    padding: 2px 5px;
+    border-radius: 3px;
+    display: none;
+  `;
+  document.body.appendChild(_overlay);
+  document.body.appendChild(_label);
+}
+function updateScrollDepthOverlay(events) {
+  if (!_overlay || !_label) return;
+  if (events.length === 0) {
+    _overlay.style.opacity = "0";
+    _label.style.display = "none";
+    return;
+  }
+  const byUrl = /* @__PURE__ */ new Map();
+  for (const e of events) {
+    const prev = byUrl.get(e.url) ?? 0;
+    if (e.maxDepth > prev) byUrl.set(e.url, e.maxDepth);
+  }
+  const currentUrl = location.pathname;
+  const depth = byUrl.get(currentUrl) ?? Math.max(...Array.from(byUrl.values()));
+  const markerY = depth / 100 * window.innerHeight;
+  _label.style.top = `${Math.max(0, markerY - 14)}px`;
+  _label.textContent = `Max scroll: ${depth}%`;
+  _label.style.display = "block";
+}
+function showScrollDepthOverlay(events) {
+  if (!_overlay) initScrollDepthOverlay();
+  if (_overlay) {
+    _overlay.style.display = "block";
+    setTimeout(() => {
+      if (_overlay) _overlay.style.opacity = "0.7";
+    }, 10);
+  }
+  if (_label) _label.style.display = "block";
+  updateScrollDepthOverlay(events);
+}
 function hideScrollDepthOverlay() {
+  if (_overlay) {
+    _overlay.style.opacity = "0";
+    setTimeout(() => {
+      if (_overlay) _overlay.style.display = "none";
+    }, 300);
+  }
+  if (_label) _label.style.display = "none";
+}
+function isScrollDepthVisible() {
+  if (!_overlay) return false;
+  return _overlay.style.display !== "none";
 }
 let _screenshotOverlay = null;
 let _escHandler = null;
@@ -1781,7 +1863,7 @@ function render(root, sessions) {
           <button class="${PREFIX}-toggle ${isHeatmapVisible() ? "active" : ""}" id="${PREFIX}-toggle-heatmap">
             🔥 Heatmap
           </button>
-          <button class="${PREFIX}-toggle ${"active"}" id="${PREFIX}-toggle-scroll">
+          <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? "active" : ""}" id="${PREFIX}-toggle-scroll">
             📏 Scroll Depth
           </button>
         </div>
@@ -1832,6 +1914,11 @@ function bindEvents(root, sessions) {
     render(root, sessions);
   });
   root.querySelector(`#${PREFIX}-toggle-scroll`)?.addEventListener("click", () => {
+    if (isScrollDepthVisible()) {
+      hideScrollDepthOverlay();
+    } else {
+      showScrollDepthOverlay(getScrolls(_allEvents));
+    }
     render(root, sessions);
   });
   root.querySelector(`#${PREFIX}-btn-screenshot`)?.addEventListener("click", () => {

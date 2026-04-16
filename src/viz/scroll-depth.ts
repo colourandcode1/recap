@@ -94,7 +94,8 @@ export function hideScrollDepthOverlay(): void {
 }
 
 export function isScrollDepthVisible(): boolean {
-  return _overlay?.style.display !== 'none';
+  if (!_overlay) return false;
+  return _overlay.style.display !== 'none';
 }
 
 export function destroyScrollDepthOverlay(): void {
