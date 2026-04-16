@@ -18,6 +18,13 @@
 
 import type { ClickEvent } from '../types.js';
 
+export interface HeatmapFilter {
+  pagePath: string;
+  visitStartMs: number;
+  visitEndMs: number | null; // null = open-ended (last visit still in progress)
+  label: string;             // e.g. "visit 2 of 3" — shown in the filter bar
+}
+
 const DEFAULT_RADIUS = 25;
 const DEFAULT_BLUR = 15;
 const DEFAULT_OPACITY = 0.65;
@@ -36,6 +43,7 @@ let _colorGradient: Uint8ClampedArray | null = null;
 let _radius = DEFAULT_RADIUS;
 let _blur = DEFAULT_BLUR;
 let _clicks: ClickEvent[] = [];
+let _filter: HeatmapFilter | null = null;
 let _scrollScheduled = false;
 
 function handleScroll(): void {
@@ -125,19 +133,30 @@ function resizeCanvas(): void {
   _canvas.height = window.innerHeight;
 }
 
-export function renderHeatmap(clicks: ClickEvent[]): void {
+export function renderHeatmap(clicks: ClickEvent[], filter?: HeatmapFilter): void {
   if (!_canvas || !_ctx) return;
 
   _clicks = clicks;
+  _filter = filter ?? null;
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
 
-  if (clicks.length === 0) return;
+  // Apply optional page-visit filter
+  const visible = _filter
+    ? clicks.filter(
+        (c) =>
+          c.url === _filter!.pagePath &&
+          c.timestamp >= _filter!.visitStartMs &&
+          (_filter!.visitEndMs === null || c.timestamp < _filter!.visitEndMs)
+      )
+    : clicks;
+
+  if (visible.length === 0) return;
 
   // Use pageX/pageY (document-relative) adjusted by current scroll offset
   // so dots stay aligned with page content as the user scrolls.
   _ctx.globalAlpha = 0.05;
-  for (const click of clicks) {
+  for (const click of visible) {
     const r = _radius + _blur;
     _ctx.drawImage(_circle!, click.pageX - window.scrollX - r, click.pageY - window.scrollY - r);
   }
@@ -160,6 +179,10 @@ export function isHeatmapVisible(): boolean {
   return _canvas?.style.display !== 'none';
 }
 
+export function getHeatmapFilter(): HeatmapFilter | null {
+  return _filter;
+}
+
 export function getHeatmapDataURL(): string | null {
   if (!_canvas) return null;
   return _canvas.toDataURL('image/png');
@@ -172,4 +195,5 @@ export function destroyHeatmap(): void {
     _canvas = null;
     _ctx = null;
   }
+  _filter = null;
 }

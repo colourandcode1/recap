@@ -1173,6 +1173,7 @@ let _colorGradient = null;
 let _radius = DEFAULT_RADIUS;
 let _blur = DEFAULT_BLUR;
 let _clicks = [];
+let _filter = null;
 let _scrollScheduled = false;
 function handleScroll() {
   if (_canvas?.style.display === "none") return;
@@ -1252,14 +1253,18 @@ function resizeCanvas() {
   _canvas.width = window.innerWidth;
   _canvas.height = window.innerHeight;
 }
-function renderHeatmap(clicks) {
+function renderHeatmap(clicks, filter) {
   if (!_canvas || !_ctx) return;
   _clicks = clicks;
+  _filter = filter ?? null;
   resizeCanvas();
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
-  if (clicks.length === 0) return;
+  const visible = _filter ? clicks.filter(
+    (c) => c.url === _filter.pagePath && c.timestamp >= _filter.visitStartMs && (_filter.visitEndMs === null || c.timestamp < _filter.visitEndMs)
+  ) : clicks;
+  if (visible.length === 0) return;
   _ctx.globalAlpha = 0.05;
-  for (const click of clicks) {
+  for (const click of visible) {
     const r = _radius + _blur;
     _ctx.drawImage(_circle, click.pageX - window.scrollX - r, click.pageY - window.scrollY - r);
   }
@@ -1547,6 +1552,191 @@ function downloadFlowDiagram(navEvents, sessionName) {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
+const LONG_PAUSE_S = 30;
+const BRIEF_VISIT_S = 2;
+function generateTimeline(events, isCurrentSession = false) {
+  if (events.length === 0) return [];
+  const sorted = events.slice().sort((a, b) => a.timestamp - b.timestamp);
+  const sessionStartMs = sorted[0].timestamp;
+  const lastEventMs = sorted[sorted.length - 1].timestamp;
+  const navEvents = sorted.filter((e) => e.type === "navigation");
+  if (navEvents.length === 0) {
+    const duration = isCurrentSession ? null : (lastEventMs - sessionStartMs) / 1e3;
+    const tags = [];
+    if (!isCurrentSession) tags.push("end of session");
+    return [{
+      pagePath: sorted[0].url,
+      arrivalTime: 0,
+      duration: duration !== null ? Math.max(0, duration) : null,
+      visitNumber: 1,
+      isRevisit: false,
+      tags
+    }];
+  }
+  const pages = [];
+  const firstNav = navEvents[0];
+  if (firstNav.method === "pageload") {
+    pages.push({ path: firstNav.to, arrivalMs: firstNav.timestamp });
+  } else {
+    pages.push({ path: firstNav.from, arrivalMs: sessionStartMs });
+    pages.push({ path: firstNav.to, arrivalMs: firstNav.timestamp });
+  }
+  for (let i = 1; i < navEvents.length; i++) {
+    pages.push({ path: navEvents[i].to, arrivalMs: navEvents[i].timestamp });
+  }
+  const visitCounts = /* @__PURE__ */ new Map();
+  return pages.map((page, i) => {
+    const isLast = i === pages.length - 1;
+    let duration;
+    if (!isLast) {
+      duration = (pages[i + 1].arrivalMs - page.arrivalMs) / 1e3;
+    } else if (isCurrentSession) {
+      duration = null;
+    } else {
+      duration = (lastEventMs - page.arrivalMs) / 1e3;
+    }
+    if (duration !== null) duration = Math.max(0, duration);
+    const prevCount = visitCounts.get(page.path) ?? 0;
+    const visitNumber = prevCount + 1;
+    visitCounts.set(page.path, visitNumber);
+    const isRevisit = visitNumber > 1;
+    const tags = [];
+    if (i === 1) tags.push("first task");
+    if (isRevisit) tags.push("backtrack");
+    if (duration !== null && duration > LONG_PAUSE_S) tags.push("long pause");
+    if (duration !== null && !isLast && duration < BRIEF_VISIT_S) tags.push("brief visit");
+    if (isLast && !isCurrentSession) tags.push("end of session");
+    return {
+      pagePath: page.path,
+      arrivalTime: (page.arrivalMs - sessionStartMs) / 1e3,
+      duration,
+      visitNumber,
+      isRevisit,
+      tags
+    };
+  });
+}
+const PREFIX$1 = "recap-panel";
+const TAG_CONFIG = {
+  backtrack: { bg: "#7a4a1a", color: "#fbbf6a" },
+  "first task": { bg: "#3a3a4a", color: "#a0a0b8" },
+  "end of session": { bg: "#3a3a4a", color: "#a0a0b8" },
+  abandoned: { bg: "#7a1a1a", color: "#fca5a5" },
+  "long pause": { bg: "#3a3a4a", color: "#a0a0b8" },
+  "brief visit": { bg: "#3a3a4a", color: "#a0a0b8" }
+};
+function formatArrival(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+function formatDuration$1(seconds) {
+  if (seconds === null) return "(in progress)";
+  const s = Math.floor(seconds);
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
+}
+function renderTag(tag) {
+  const { bg, color } = TAG_CONFIG[tag];
+  return `<span style="background:${bg};color:${color};font-size:10px;padding:2px 6px;border-radius:3px;margin-left:4px;white-space:nowrap">${tag}</span>`;
+}
+function renderRow(visit, index) {
+  const visitMeta = visit.isRevisit ? `<span style="color:#718096;font-size:11px;margin-left:6px">(visit ${visit.visitNumber})</span>` : "";
+  const tags = visit.tags.map(renderTag).join("");
+  const durationStyle = visit.duration === null ? "color:#718096;font-style:italic" : "color:#a0aec0";
+  return `
+    <div
+      data-visit-index="${index}"
+      style="
+        display:flex;align-items:center;gap:8px;
+        padding:7px 0;border-bottom:1px solid #2a2a3e;
+        cursor:pointer;transition:background 0.1s;
+      "
+      class="${PREFIX$1}-tl-row"
+    >
+      <span style="font-family:monospace;font-size:11px;color:#718096;min-width:36px;flex-shrink:0">${formatArrival(visit.arrivalTime)}</span>
+      <span style="font-size:12px;color:#e2e8f0;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${visit.pagePath}</span>
+      ${visitMeta}
+      <span style="font-size:11px;${durationStyle};flex-shrink:0;min-width:72px;text-align:right">${formatDuration$1(visit.duration)}</span>
+      <span style="display:flex;flex-wrap:wrap;gap:2px;flex-shrink:0">${tags}</span>
+    </div>
+  `;
+}
+function buildTimelineHTML(events, sessionId) {
+  if (events.length === 0) {
+    return `<div style="color:#718096;font-style:italic;padding:12px 0">Select a session to view its timeline.</div>`;
+  }
+  const isCurrentSession = sessionId === getSessionId();
+  const visits = generateTimeline(events, isCurrentSession);
+  if (visits.length === 0) {
+    return `<div style="color:#718096;font-style:italic;padding:12px 0">No navigation data to display.</div>`;
+  }
+  const hasMultiplePages = visits.some((v) => v.pagePath !== visits[0].pagePath);
+  if (!hasMultiplePages) {
+    const row = renderRow(visits[0], 0);
+    return `
+      <div style="color:#718096;font-size:11px;margin-bottom:8px">
+        This session stayed on a single page. No navigation flow to show.
+      </div>
+      <div>${row}</div>
+    `;
+  }
+  return `<div>${visits.map((v, i) => renderRow(v, i)).join("")}</div>`;
+}
+const TIMELINE_STYLES = `
+  .${PREFIX$1}-tl-row:hover {
+    background: #2a2a3e !important;
+  }
+  .${PREFIX$1}-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #1a2a3e;
+    border: 1px solid #2b6cb0;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #bee3f8;
+    margin-bottom: 10px;
+  }
+  .${PREFIX$1}-filter-bar strong {
+    color: #90cdf4;
+  }
+  .${PREFIX$1}-filter-clear {
+    background: none;
+    border: none;
+    color: #90cdf4;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: system-ui, sans-serif;
+    padding: 0;
+    margin-left: auto;
+  }
+  .${PREFIX$1}-filter-clear:hover { color: #fff; }
+  .${PREFIX$1}-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #2d3748;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+  .${PREFIX$1}-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #718096;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+    padding: 8px 14px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .${PREFIX$1}-tab:hover { color: #e2e8f0; }
+  .${PREFIX$1}-tab.active {
+    color: #06b6d4;
+    border-bottom-color: #06b6d4;
+  }
+`;
 const PREFIX = "recap-panel";
 const STYLES = `
   .${PREFIX}-root {
@@ -1750,10 +1940,12 @@ let _panelRoot = null;
 let _styleEl = null;
 let _currentSessionId = "";
 let _allEvents = [];
+let _activeTab = "heatmap";
+let _heatmapFilter = null;
 function injectStyles() {
   if (_styleEl) return;
   _styleEl = document.createElement("style");
-  _styleEl.textContent = STYLES;
+  _styleEl.textContent = STYLES + TIMELINE_STYLES;
   document.head.appendChild(_styleEl);
 }
 function showToast(message, duration = 2500) {
@@ -1855,6 +2047,56 @@ function render(root, sessions) {
           ${s.sessionId.slice(0, 8)} (${s.eventCount} events)
         </option>`
   ).join("");
+  const filterBar = _heatmapFilter ? `<div class="${PREFIX}-filter-bar">
+         <span>Showing: <strong>${_heatmapFilter.pagePath}</strong>${_heatmapFilter.label ? ` — ${_heatmapFilter.label}` : ""}</span>
+         <button class="${PREFIX}-filter-clear" id="${PREFIX}-btn-clear-filter">× clear</button>
+       </div>` : "";
+  const heatmapTabContent = `
+    ${filterBar}
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Stats</div>
+      <div class="${PREFIX}-stats">
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.clicks}</div>
+          <div class="${PREFIX}-stat-key">Clicks</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.pages}</div>
+          <div class="${PREFIX}-stat-key">Pages</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${formatDuration(stats.duration)}</div>
+          <div class="${PREFIX}-stat-key">Duration</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
+          <div class="${PREFIX}-stat-key">Max Scroll</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Overlays</div>
+      <div class="${PREFIX}-toggles">
+        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? "active" : ""}" id="${PREFIX}-toggle-heatmap">
+          🔥 Heatmap
+        </button>
+        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? "active" : ""}" id="${PREFIX}-toggle-scroll">
+          📏 Scroll Depth
+        </button>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Navigation Flow</div>
+      <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
+    </div>
+  `;
+  const timelineTabContent = `
+    <div class="${PREFIX}-section" style="overflow-y:auto;max-height:calc(70vh - 240px)">
+      ${buildTimelineHTML(_allEvents, _currentSessionId)}
+    </div>
+  `;
   root.innerHTML = `
     <div class="${PREFIX}-header">
       <span class="${PREFIX}-title">⚡ Recap</span>
@@ -1868,44 +2110,12 @@ function render(root, sessions) {
                </select>
              </div>` : ""}
 
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Stats</div>
-        <div class="${PREFIX}-stats">
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.clicks}</div>
-            <div class="${PREFIX}-stat-key">Clicks</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.pages}</div>
-            <div class="${PREFIX}-stat-key">Pages</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${formatDuration(stats.duration)}</div>
-            <div class="${PREFIX}-stat-key">Duration</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
-            <div class="${PREFIX}-stat-key">Max Scroll</div>
-          </div>
-        </div>
+      <div class="${PREFIX}-tabs">
+        <button class="${PREFIX}-tab ${_activeTab === "heatmap" ? "active" : ""}" data-tab="heatmap">Heatmap</button>
+        <button class="${PREFIX}-tab ${_activeTab === "timeline" ? "active" : ""}" data-tab="timeline">Timeline</button>
       </div>
 
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Overlays</div>
-        <div class="${PREFIX}-toggles">
-          <button class="${PREFIX}-toggle ${isHeatmapVisible() ? "active" : ""}" id="${PREFIX}-toggle-heatmap">
-            🔥 Heatmap
-          </button>
-          <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? "active" : ""}" id="${PREFIX}-toggle-scroll">
-            📏 Scroll Depth
-          </button>
-        </div>
-      </div>
-
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Navigation Flow</div>
-        <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
-      </div>
+      ${_activeTab === "heatmap" ? heatmapTabContent : timelineTabContent}
 
       <div class="${PREFIX}-section">
         <div class="${PREFIX}-label">Export</div>
@@ -1932,9 +2142,41 @@ function bindEvents(root, sessions) {
   root.querySelector(`#${PREFIX}-session-select`)?.addEventListener("change", async (e) => {
     _currentSessionId = e.target.value;
     _allEvents = await loadSessionData(_currentSessionId);
+    _heatmapFilter = null;
     if (isHeatmapVisible()) {
       renderHeatmap(getClicks(_allEvents));
     }
+    render(root, sessions);
+  });
+  root.querySelectorAll(`.${PREFIX}-tab`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      _activeTab = btn.dataset["tab"] ?? "heatmap";
+      render(root, sessions);
+    });
+  });
+  root.querySelectorAll(`.${PREFIX}-tl-row`).forEach((row) => {
+    row.addEventListener("click", () => {
+      const visitIndex = parseInt(row.dataset["visitIndex"] ?? "0", 10);
+      const timeline = generateTimeline(_allEvents);
+      const visit = timeline[visitIndex];
+      if (!visit) return;
+      const totalVisits = timeline.filter((v) => v.pagePath === visit.pagePath).length;
+      const label = totalVisits > 1 ? `visit ${visit.visitNumber} of ${totalVisits}` : "";
+      _heatmapFilter = {
+        pagePath: visit.pagePath,
+        visitStartMs: visit.arrivalTime * 1e3,
+        visitEndMs: visit.duration !== null ? (visit.arrivalTime + visit.duration) * 1e3 : null,
+        label
+      };
+      _activeTab = "heatmap";
+      renderHeatmap(getClicks(_allEvents), _heatmapFilter);
+      if (!isHeatmapVisible()) showHeatmap();
+      render(root, sessions);
+    });
+  });
+  root.querySelector(`#${PREFIX}-btn-clear-filter`)?.addEventListener("click", () => {
+    _heatmapFilter = null;
+    renderHeatmap(getClicks(_allEvents));
     render(root, sessions);
   });
   root.querySelector(`#${PREFIX}-toggle-heatmap`)?.addEventListener("click", () => {
@@ -1989,6 +2231,7 @@ function bindEvents(root, sessions) {
       await clearAllSessions();
       clearBuffer();
       _allEvents = [];
+      _heatmapFilter = null;
       hideHeatmap();
       hideScrollDepthOverlay();
       render(root, []);

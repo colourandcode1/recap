@@ -12,12 +12,15 @@ import {
   hideHeatmap,
   isHeatmapVisible,
   initHeatmapCanvas,
+  type HeatmapFilter,
 } from './heatmap.js';
 import { showScrollDepthOverlay, hideScrollDepthOverlay, isScrollDepthVisible } from './scroll-depth.js';
 import { enterScreenshotMode, downloadHeatmapPNG } from './screenshot.js';
 import { downloadFlowDiagram } from './flow-diagram.js';
 import { getSessionId, getSessionName } from '../capture/session.js';
 import { pauseClickCapture, resumeClickCapture } from '../capture/clicks.js';
+import { buildTimelineHTML, TIMELINE_STYLES } from './timeline-view.js';
+import { generateTimeline } from '../analysis/timeline.js';
 
 const PREFIX = 'recap-panel';
 
@@ -224,11 +227,13 @@ let _panelRoot: HTMLDivElement | null = null;
 let _styleEl: HTMLStyleElement | null = null;
 let _currentSessionId: string = '';
 let _allEvents: AnyEvent[] = [];
+let _activeTab: 'heatmap' | 'timeline' = 'heatmap';
+let _heatmapFilter: HeatmapFilter | null = null;
 
 function injectStyles(): void {
   if (_styleEl) return;
   _styleEl = document.createElement('style');
-  _styleEl.textContent = STYLES;
+  _styleEl.textContent = STYLES + TIMELINE_STYLES;
   document.head.appendChild(_styleEl);
 }
 
@@ -364,6 +369,61 @@ function render(
     )
     .join('');
 
+  const filterBar = _heatmapFilter
+    ? `<div class="${PREFIX}-filter-bar">
+         <span>Showing: <strong>${_heatmapFilter.pagePath}</strong>${_heatmapFilter.label ? ` — ${_heatmapFilter.label}` : ''}</span>
+         <button class="${PREFIX}-filter-clear" id="${PREFIX}-btn-clear-filter">× clear</button>
+       </div>`
+    : '';
+
+  const heatmapTabContent = `
+    ${filterBar}
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Stats</div>
+      <div class="${PREFIX}-stats">
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.clicks}</div>
+          <div class="${PREFIX}-stat-key">Clicks</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.pages}</div>
+          <div class="${PREFIX}-stat-key">Pages</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${formatDuration(stats.duration)}</div>
+          <div class="${PREFIX}-stat-key">Duration</div>
+        </div>
+        <div class="${PREFIX}-stat">
+          <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
+          <div class="${PREFIX}-stat-key">Max Scroll</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Overlays</div>
+      <div class="${PREFIX}-toggles">
+        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? 'active' : ''}" id="${PREFIX}-toggle-heatmap">
+          🔥 Heatmap
+        </button>
+        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? 'active' : ''}" id="${PREFIX}-toggle-scroll">
+          📏 Scroll Depth
+        </button>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section">
+      <div class="${PREFIX}-label">Navigation Flow</div>
+      <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
+    </div>
+  `;
+
+  const timelineTabContent = `
+    <div class="${PREFIX}-section" style="overflow-y:auto;max-height:calc(70vh - 240px)">
+      ${buildTimelineHTML(_allEvents, _currentSessionId)}
+    </div>
+  `;
+
   root.innerHTML = `
     <div class="${PREFIX}-header">
       <span class="${PREFIX}-title">⚡ Recap</span>
@@ -381,44 +441,12 @@ function render(
           : ''
       }
 
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Stats</div>
-        <div class="${PREFIX}-stats">
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.clicks}</div>
-            <div class="${PREFIX}-stat-key">Clicks</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.pages}</div>
-            <div class="${PREFIX}-stat-key">Pages</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${formatDuration(stats.duration)}</div>
-            <div class="${PREFIX}-stat-key">Duration</div>
-          </div>
-          <div class="${PREFIX}-stat">
-            <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
-            <div class="${PREFIX}-stat-key">Max Scroll</div>
-          </div>
-        </div>
+      <div class="${PREFIX}-tabs">
+        <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Heatmap</button>
+        <button class="${PREFIX}-tab ${_activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">Timeline</button>
       </div>
 
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Overlays</div>
-        <div class="${PREFIX}-toggles">
-          <button class="${PREFIX}-toggle ${isHeatmapVisible() ? 'active' : ''}" id="${PREFIX}-toggle-heatmap">
-            🔥 Heatmap
-          </button>
-          <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? 'active' : ''}" id="${PREFIX}-toggle-scroll">
-            📏 Scroll Depth
-          </button>
-        </div>
-      </div>
-
-      <div class="${PREFIX}-section">
-        <div class="${PREFIX}-label">Navigation Flow</div>
-        <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
-      </div>
+      ${_activeTab === 'heatmap' ? heatmapTabContent : timelineTabContent}
 
       <div class="${PREFIX}-section">
         <div class="${PREFIX}-label">Export</div>
@@ -455,10 +483,54 @@ function bindEvents(
     ?.addEventListener('change', async (e) => {
       _currentSessionId = (e.target as HTMLSelectElement).value;
       _allEvents = await loadSessionData(_currentSessionId);
-      // Re-render heatmap if visible
+      _heatmapFilter = null; // clear filter when switching sessions
       if (isHeatmapVisible()) {
         renderHeatmap(getClicks(_allEvents));
       }
+      render(root, sessions);
+    });
+
+  // Tab switching
+  root.querySelectorAll<HTMLButtonElement>(`.${PREFIX}-tab`).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _activeTab = (btn.dataset['tab'] as 'heatmap' | 'timeline') ?? 'heatmap';
+      render(root, sessions);
+    });
+  });
+
+  // Timeline row click → switch to heatmap tab with visit filter
+  root.querySelectorAll<HTMLDivElement>(`.${PREFIX}-tl-row`).forEach((row) => {
+    row.addEventListener('click', () => {
+      const visitIndex = parseInt(row.dataset['visitIndex'] ?? '0', 10);
+      const timeline = generateTimeline(_allEvents);
+      const visit = timeline[visitIndex];
+      if (!visit) return;
+
+      const totalVisits = timeline.filter((v) => v.pagePath === visit.pagePath).length;
+      const label = totalVisits > 1 ? `visit ${visit.visitNumber} of ${totalVisits}` : '';
+
+      _heatmapFilter = {
+        pagePath: visit.pagePath,
+        visitStartMs: visit.arrivalTime * 1000,
+        visitEndMs: visit.duration !== null
+          ? (visit.arrivalTime + visit.duration) * 1000
+          : null,
+        label,
+      };
+
+      _activeTab = 'heatmap';
+      renderHeatmap(getClicks(_allEvents), _heatmapFilter);
+      if (!isHeatmapVisible()) showHeatmap();
+      render(root, sessions);
+    });
+  });
+
+  // Clear heatmap filter
+  root
+    .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-clear-filter`)
+    ?.addEventListener('click', () => {
+      _heatmapFilter = null;
+      renderHeatmap(getClicks(_allEvents));
       render(root, sessions);
     });
 
@@ -549,6 +621,7 @@ function bindEvents(
         await clearAllSessions();
         clearBuffer();
         _allEvents = [];
+        _heatmapFilter = null;
         hideHeatmap();
         hideScrollDepthOverlay();
         render(root, []);
