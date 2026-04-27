@@ -602,7 +602,7 @@ function render(
       }
 
       <div class="${PREFIX}-tabs">
-        <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Heatmap</button>
+        <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Overview</button>
         <button class="${PREFIX}-tab ${_activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">Timeline</button>
       </div>
 
