@@ -1082,32 +1082,27 @@ function sanitizeFilename(filename) {
   const safeExt = sanitizeFilenamePart(ext) || FALLBACK_DOWNLOAD_EXT;
   return `${safeBase}.${safeExt}`;
 }
-function downloadBlob(blob, filename) {
-  let objectUrl = "";
-  let anchor = null;
+function triggerDownload(dataUrl, filename) {
+  const anchor = document.createElement("a");
   try {
-    objectUrl = URL.createObjectURL(blob);
-    anchor = document.createElement("a");
-    anchor.href = objectUrl;
+    anchor.href = dataUrl;
     anchor.download = sanitizeFilename(filename);
-    anchor.rel = "noopener";
     anchor.style.display = "none";
     document.body.appendChild(anchor);
     anchor.click();
+    document.body.removeChild(anchor);
     return true;
   } catch (err) {
     console.error("[Recap] Download failed:", err);
+    if (anchor.parentElement) anchor.parentElement.removeChild(anchor);
     return false;
-  } finally {
-    setTimeout(() => {
-      if (anchor?.parentElement) {
-        anchor.parentElement.removeChild(anchor);
-      }
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    }, 4e3);
   }
+}
+function downloadText(content, mimeType, filename) {
+  return triggerDownload(
+    `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`,
+    filename
+  );
 }
 function buildFilename$1(prefix, ext) {
   const ts = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -1119,11 +1114,11 @@ function exportJSON(events, sessionName) {
     sessionName,
     events
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json"
-  });
   const name = sessionName ? `recap-${sessionName}` : "recap-session";
-  return downloadBlob(blob, buildFilename$1(name, "json"));
+  return triggerDownload(
+    `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload, null, 2))}`,
+    buildFilename$1(name, "json")
+  );
 }
 function exportCSV(events, sessionName) {
   const headers = [
@@ -1186,16 +1181,18 @@ function exportCSV(events, sessionName) {
     return [...base, "", "", "", "", "", "", "", "", "", "", "", "", ""];
   });
   const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
   const name = sessionName ? `recap-${sessionName}` : "recap-session";
-  return downloadBlob(blob, buildFilename$1(name, "csv"));
+  return triggerDownload(
+    `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`,
+    buildFilename$1(name, "csv")
+  );
 }
 function exportSummaryJSON(summary, sessionName) {
-  const blob = new Blob([JSON.stringify(summary, null, 2)], {
-    type: "application/json"
-  });
   const name = sessionName ? `recap-ai-${sessionName}` : "recap-ai-summary";
-  return downloadBlob(blob, buildFilename$1(name, "json"));
+  return triggerDownload(
+    `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(summary, null, 2))}`,
+    buildFilename$1(name, "json")
+  );
 }
 const DEFAULT_RADIUS = 25;
 const DEFAULT_BLUR = 15;
@@ -1328,6 +1325,8 @@ function getHeatmapDataURL() {
 let _overlay = null;
 let _marker = null;
 let _label = null;
+let _isVisible = false;
+let _hideTimeout = null;
 function initScrollDepthOverlay() {
   if (_overlay) return;
   _overlay = document.createElement("div");
@@ -1412,6 +1411,11 @@ function updateScrollDepthOverlay(events) {
 }
 function showScrollDepthOverlay(events) {
   if (!_overlay) initScrollDepthOverlay();
+  _isVisible = true;
+  if (_hideTimeout !== null) {
+    window.clearTimeout(_hideTimeout);
+    _hideTimeout = null;
+  }
   if (_overlay) {
     _overlay.style.display = "block";
     setTimeout(() => {
@@ -1421,18 +1425,22 @@ function showScrollDepthOverlay(events) {
   updateScrollDepthOverlay(events);
 }
 function hideScrollDepthOverlay() {
+  _isVisible = false;
   if (_overlay) {
     _overlay.style.opacity = "0";
-    setTimeout(() => {
-      if (_overlay) _overlay.style.display = "none";
+    if (_hideTimeout !== null) {
+      window.clearTimeout(_hideTimeout);
+    }
+    _hideTimeout = window.setTimeout(() => {
+      if (_overlay && !_isVisible) _overlay.style.display = "none";
+      _hideTimeout = null;
     }, 300);
   }
   if (_marker) _marker.style.display = "none";
   if (_label) _label.style.display = "none";
 }
 function isScrollDepthVisible() {
-  if (!_overlay) return false;
-  return _overlay.style.display !== "none";
+  return _isVisible;
 }
 let _screenshotOverlay = null;
 let _escHandler = null;
@@ -1584,9 +1592,8 @@ function generateFlowSVG(navEvents) {
 }
 function downloadFlowDiagram(navEvents, sessionName) {
   const svg = generateFlowSVG(navEvents);
-  const blob = new Blob([svg], { type: "image/svg+xml" });
   const name = sessionName ? `recap-flow-${sessionName}` : "recap-flow";
-  return downloadBlob(blob, buildFilename$1(name, "svg"));
+  return downloadText(svg, "image/svg+xml", buildFilename$1(name, "svg"));
 }
 const LONG_PAUSE_S = 30;
 const BRIEF_VISIT_S = 2;
@@ -1700,12 +1707,22 @@ function renderRow(visit, index) {
 }
 function buildTimelineHTML(events, sessionId) {
   if (events.length === 0) {
-    return `<div style="color:#718096;font-style:italic;padding:12px 0">Select a session to view its timeline.</div>`;
+    return `
+      <div class="${PREFIX$1}-timeline-empty">
+        <div class="${PREFIX$1}-timeline-empty-title">No timeline data yet</div>
+        <div class="${PREFIX$1}-timeline-empty-copy">Select a session to view its page visits and navigation flow.</div>
+      </div>
+    `;
   }
   const isCurrentSession = sessionId === getSessionId();
   const visits = generateTimeline(events, isCurrentSession);
   if (visits.length === 0) {
-    return `<div style="color:#718096;font-style:italic;padding:12px 0">No navigation data to display.</div>`;
+    return `
+      <div class="${PREFIX$1}-timeline-empty">
+        <div class="${PREFIX$1}-timeline-empty-title">No navigation events recorded</div>
+        <div class="${PREFIX$1}-timeline-empty-copy">This session has events, but none that form a page timeline.</div>
+      </div>
+    `;
   }
   const hasMultiplePages = visits.some((v) => v.pagePath !== visits[0].pagePath);
   if (!hasMultiplePages) {
@@ -1776,6 +1793,7 @@ const TIMELINE_STYLES = `
 const PREFIX = "recap-panel";
 const PARTICIPANT_GUIDANCE_METRICS_KEY = "recap-participant-guidance-metrics";
 const PARTICIPANT_GUIDANCE_EVENT = "recap:participant-guidance";
+const RECAP_DOCS_URL = "https://www.recap-ux.com";
 const STYLES = `
   .${PREFIX}-root {
     position: fixed;
@@ -1823,9 +1841,48 @@ const STYLES = `
   }
   .${PREFIX}-close:hover { color: #fff; }
   .${PREFIX}-body {
-    overflow-y: auto;
     padding: 12px 14px;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .${PREFIX}-content-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .${PREFIX}-tab-content {
+    min-height: 170px;
+  }
+  .${PREFIX}-tab-content-timeline {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+  }
+  .${PREFIX}-timeline-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .${PREFIX}-timeline-empty {
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    color: #718096;
+    text-align: center;
+    padding: 10px 16px;
+  }
+  .${PREFIX}-timeline-empty-title {
+    color: #a0aec0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .${PREFIX}-timeline-empty-copy {
+    font-size: 11px;
   }
   .${PREFIX}-section {
     margin-bottom: 14px;
@@ -1840,6 +1897,8 @@ const STYLES = `
   .${PREFIX}-label-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 6px;
   }
   .${PREFIX}-label-with-help {
@@ -1907,6 +1966,24 @@ const STYLES = `
     font-family: system-ui, sans-serif;
   }
   .${PREFIX}-inline-link:hover { color: #90cdf4; }
+  .${PREFIX}-docs-link-btn {
+    border: 1px solid #4a5568;
+    border-radius: 4px;
+    background: #2d3748;
+    color: #bee3f8;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: system-ui, sans-serif;
+    white-space: nowrap;
+  }
+  .${PREFIX}-docs-link-btn:hover,
+  .${PREFIX}-docs-link-btn:focus-visible {
+    background: #3a4a6b;
+    border-color: #4299e1;
+    color: #e2e8f0;
+  }
   .${PREFIX}-select {
     width: 100%;
     background: #2d3748;
@@ -2057,6 +2134,7 @@ let _activeTab = "heatmap";
 let _heatmapFilter = null;
 let _origPushState = null;
 let _hasTrackedTooltipOpened = false;
+let _preferredPanelMinHeight = 0;
 function readStorage(key) {
   try {
     return localStorage.getItem(key);
@@ -2100,6 +2178,12 @@ function openParticipantTab() {
     return;
   }
   showToast("Unable to open a new tab. Please allow pop-ups for this site.", 2500, "error");
+}
+function openDocsSite() {
+  const tab = window.open(RECAP_DOCS_URL, "_blank", "noopener,noreferrer");
+  if (!tab) {
+    showToast("Unable to open docs. Please allow pop-ups for this site.", 2500, "error");
+  }
 }
 function handleUrlChange() {
   if (!_panelRoot || _panelRoot.style.display === "none") return;
@@ -2187,6 +2271,7 @@ async function openPanel() {
     }
     render(_panelRoot, _sessions);
     _panelRoot.style.display = "flex";
+    if (_activeTab === "heatmap") syncPanelMinHeight(_panelRoot);
     pauseClickCapture();
     return;
   }
@@ -2204,6 +2289,7 @@ async function openPanel() {
   _panelRoot.setAttribute("data-ut-no-track", "");
   render(_panelRoot, _sessions);
   document.body.appendChild(_panelRoot);
+  if (_activeTab === "heatmap") syncPanelMinHeight(_panelRoot);
   _origPushState = history.pushState.bind(history);
   history.pushState = function(state, title, url) {
     _origPushState(state, title, url);
@@ -2266,7 +2352,7 @@ function render(root, sessions) {
     </div>
   `;
   const timelineTabContent = `
-    <div class="${PREFIX}-section" style="overflow-y:auto;max-height:calc(70vh - 240px)">
+    <div class="${PREFIX}-section ${PREFIX}-timeline-scroll">
       ${buildTimelineHTML(_allEvents, _currentSessionId)}
     </div>
   `;
@@ -2276,37 +2362,47 @@ function render(root, sessions) {
       <button class="${PREFIX}-close" aria-label="Close panel">×</button>
     </div>
     <div class="${PREFIX}-body">
-      ${sessions.length > 0 ? `<div class="${PREFIX}-section">
-               <div class="${PREFIX}-label-row">
-                 <div class="${PREFIX}-label-with-help" id="${PREFIX}-session-help-wrap">
-                   <div class="${PREFIX}-label">Session</div>
-                   <button
-                     class="${PREFIX}-help-btn"
-                     id="${PREFIX}-session-help"
-                     type="button"
-                     aria-label="How to add another participant"
-                   >i</button>
-                   <div class="${PREFIX}-hint-tooltip" role="tooltip">
-                        To add another participant, open this prototype in a new tab.
-                        <div class="${PREFIX}-hint-actions">
-                          <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
-                        </div>
+      <div class="${PREFIX}-content-scroll">
+        ${sessions.length > 0 ? `<div class="${PREFIX}-section">
+                 <div class="${PREFIX}-label-row">
+                   <div class="${PREFIX}-label-with-help" id="${PREFIX}-session-help-wrap">
+                     <div class="${PREFIX}-label">Session</div>
+                     <button
+                       class="${PREFIX}-help-btn"
+                       id="${PREFIX}-session-help"
+                       type="button"
+                       aria-label="How to add another participant"
+                     >i</button>
+                     <div class="${PREFIX}-hint-tooltip" role="tooltip">
+                          To add another participant, open this prototype in a new tab.
+                          <div class="${PREFIX}-hint-actions">
+                            <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
+                          </div>
+                     </div>
                    </div>
+                   <button
+                     class="${PREFIX}-docs-link-btn"
+                     id="${PREFIX}-btn-docs-link"
+                     type="button"
+                     aria-label="Open Recap UX docs"
+                   >Help</button>
                  </div>
-               </div>
-               <select class="${PREFIX}-select" id="${PREFIX}-session-select">
-                 ${sessionOptions}
-               </select>
-             </div>` : ""}
+                 <select class="${PREFIX}-select" id="${PREFIX}-session-select">
+                   ${sessionOptions}
+                 </select>
+               </div>` : ""}
 
-      <div class="${PREFIX}-tabs">
-        <button class="${PREFIX}-tab ${_activeTab === "heatmap" ? "active" : ""}" data-tab="heatmap">Overview</button>
-        <button class="${PREFIX}-tab ${_activeTab === "timeline" ? "active" : ""}" data-tab="timeline">Timeline</button>
+        <div class="${PREFIX}-tabs">
+          <button class="${PREFIX}-tab ${_activeTab === "heatmap" ? "active" : ""}" data-tab="heatmap">Overview</button>
+          <button class="${PREFIX}-tab ${_activeTab === "timeline" ? "active" : ""}" data-tab="timeline">Timeline</button>
+        </div>
+
+        <div class="${PREFIX}-tab-content ${_activeTab === "timeline" ? `${PREFIX}-tab-content-timeline` : ""}">
+          ${_activeTab === "heatmap" ? heatmapTabContent : timelineTabContent}
+        </div>
       </div>
 
-      ${_activeTab === "heatmap" ? heatmapTabContent : timelineTabContent}
-
-      <div class="${PREFIX}-section">
+      <div class="${PREFIX}-section" style="margin-top:12px;margin-bottom:0;">
         <div class="${PREFIX}-label">Export</div>
         <div class="${PREFIX}-exports">
           <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-screenshot">📸 Screenshot</button>
@@ -2323,6 +2419,19 @@ function render(root, sessions) {
     </div>
   `;
   bindEvents(root);
+  syncPanelMinHeight(root);
+}
+function syncPanelMinHeight(root) {
+  if (_activeTab === "heatmap") {
+    root.style.minHeight = "";
+    const measuredHeight = Math.round(root.getBoundingClientRect().height);
+    if (measuredHeight > 0) {
+      _preferredPanelMinHeight = measuredHeight;
+    }
+  }
+  if (_preferredPanelMinHeight <= 0) return;
+  const maxAllowedHeight = Math.floor(window.innerHeight * 0.7);
+  root.style.minHeight = `${Math.min(_preferredPanelMinHeight, maxAllowedHeight)}px`;
 }
 function bindEvents(root) {
   root.querySelector(`.${PREFIX}-close`)?.addEventListener("click", () => {
@@ -2350,6 +2459,9 @@ function bindEvents(root) {
     btn.addEventListener("click", () => {
       openParticipantTab();
     });
+  });
+  root.querySelector(`#${PREFIX}-btn-docs-link`)?.addEventListener("click", () => {
+    openDocsSite();
   });
   root.querySelectorAll(`.${PREFIX}-tab`).forEach((btn) => {
     btn.addEventListener("click", () => {
