@@ -67,14 +67,24 @@ function renderRow(visit: PageVisit, index: number): string {
 
 export function buildTimelineHTML(events: AnyEvent[], sessionId: string): string {
   if (events.length === 0) {
-    return `<div style="color:#718096;font-style:italic;padding:12px 0">Select a session to view its timeline.</div>`;
+    return `
+      <div class="${PREFIX}-timeline-empty">
+        <div class="${PREFIX}-timeline-empty-title">No timeline data yet</div>
+        <div class="${PREFIX}-timeline-empty-copy">Select a session to view its page visits and navigation flow.</div>
+      </div>
+    `;
   }
 
   const isCurrentSession = sessionId === getSessionId();
   const visits = generateTimeline(events, isCurrentSession);
 
   if (visits.length === 0) {
-    return `<div style="color:#718096;font-style:italic;padding:12px 0">No navigation data to display.</div>`;
+    return `
+      <div class="${PREFIX}-timeline-empty">
+        <div class="${PREFIX}-timeline-empty-title">No navigation events recorded</div>
+        <div class="${PREFIX}-timeline-empty-copy">This session has events, but none that form a page timeline.</div>
+      </div>
+    `;
   }
 
   const hasMultiplePages = visits.some(v => v.pagePath !== visits[0]!.pagePath);

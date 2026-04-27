@@ -409,6 +409,18 @@ function initScrollCapture(handler, stripQuery = true) {
     removeSentinels();
   };
 }
+function refreshScrollCapture() {
+  setTimeout(() => {
+    _maxDepth = 0;
+    _lastLoggedDepth = 0;
+    try {
+      createSentinels();
+      setupObserver();
+    } catch (err) {
+      console.error("[Recap] refreshScrollCapture error:", err);
+    }
+  }, 0);
+}
 let _handler = null;
 let _stripQuery = true;
 let _currentUrl = "";
@@ -1057,18 +1069,45 @@ function summarize(events, sessionName) {
     promptTemplate: PROMPT_TEMPLATE
   };
 }
+const DEFAULT_DOWNLOAD_PREFIX = "recap-export";
+const FALLBACK_DOWNLOAD_EXT = "txt";
+function sanitizeFilenamePart(value) {
+  return value.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, "-").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+function sanitizeFilename(filename) {
+  const extMatch = filename.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = extMatch?.[1] ?? FALLBACK_DOWNLOAD_EXT;
+  const base = extMatch ? filename.slice(0, -(ext.length + 1)) : filename;
+  const safeBase = sanitizeFilenamePart(base) || DEFAULT_DOWNLOAD_PREFIX;
+  const safeExt = sanitizeFilenamePart(ext) || FALLBACK_DOWNLOAD_EXT;
+  return `${safeBase}.${safeExt}`;
+}
 function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.style.display = "none";
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
+  let objectUrl = "";
+  let anchor = null;
+  try {
+    objectUrl = URL.createObjectURL(blob);
+    anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = sanitizeFilename(filename);
+    anchor.rel = "noopener";
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    return true;
+  } catch (err) {
+    console.error("[Recap] Download failed:", err);
+    return false;
+  } finally {
+    setTimeout(() => {
+      if (anchor?.parentElement) {
+        anchor.parentElement.removeChild(anchor);
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }, 4e3);
+  }
 }
 function buildFilename$1(prefix, ext) {
   const ts = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -1084,7 +1123,7 @@ function exportJSON(events, sessionName) {
     type: "application/json"
   });
   const name = sessionName ? `recap-${sessionName}` : "recap-session";
-  downloadBlob(blob, buildFilename$1(name, "json"));
+  return downloadBlob(blob, buildFilename$1(name, "json"));
 }
 function exportCSV(events, sessionName) {
   const headers = [
@@ -1149,14 +1188,14 @@ function exportCSV(events, sessionName) {
   const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const name = sessionName ? `recap-${sessionName}` : "recap-session";
-  downloadBlob(blob, buildFilename$1(name, "csv"));
+  return downloadBlob(blob, buildFilename$1(name, "csv"));
 }
 function exportSummaryJSON(summary, sessionName) {
   const blob = new Blob([JSON.stringify(summary, null, 2)], {
     type: "application/json"
   });
   const name = sessionName ? `recap-ai-${sessionName}` : "recap-ai-summary";
-  downloadBlob(blob, buildFilename$1(name, "json"));
+  return downloadBlob(blob, buildFilename$1(name, "json"));
 }
 const DEFAULT_RADIUS = 25;
 const DEFAULT_BLUR = 15;
@@ -1546,17 +1585,8 @@ function generateFlowSVG(navEvents) {
 function downloadFlowDiagram(navEvents, sessionName) {
   const svg = generateFlowSVG(navEvents);
   const blob = new Blob([svg], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const ts = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const name = sessionName ? `recap-flow-${sessionName}-${ts}.svg` : `recap-flow-${ts}.svg`;
-  a.href = url;
-  a.download = name;
-  a.style.display = "none";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 100);
+  const name = sessionName ? `recap-flow-${sessionName}` : "recap-flow";
+  return downloadBlob(blob, buildFilename$1(name, "svg"));
 }
 const LONG_PAUSE_S = 30;
 const BRIEF_VISIT_S = 2;
@@ -2009,6 +2039,10 @@ const STYLES = `
     z-index: 10001;
     animation: ${PREFIX}-fadein 0.2s ease;
   }
+  .${PREFIX}-toast.${PREFIX}-toast-error {
+    background: #742a2a;
+    color: #fed7d7;
+  }
   @keyframes ${PREFIX}-fadein {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -2065,7 +2099,7 @@ function openParticipantTab() {
     showToast("Opened a participant tab.");
     return;
   }
-  showToast("Unable to open a new tab. Please allow pop-ups for this site.");
+  showToast("Unable to open a new tab. Please allow pop-ups for this site.", 2500, "error");
 }
 function handleUrlChange() {
   if (!_panelRoot || _panelRoot.style.display === "none") return;
@@ -2082,9 +2116,9 @@ function injectStyles() {
   _styleEl.textContent = STYLES + TIMELINE_STYLES;
   document.head.appendChild(_styleEl);
 }
-function showToast(message, duration = 2500) {
+function showToast(message, duration = 2500, tone = "success") {
   const toast = document.createElement("div");
-  toast.className = `${PREFIX}-toast`;
+  toast.className = `${PREFIX}-toast ${tone === "error" ? `${PREFIX}-toast-error` : ""}`.trim();
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => {
@@ -2131,7 +2165,8 @@ function getStats(events) {
   const navs = getNavs(events);
   const scrolls = getScrolls(events);
   const pages = new Set(navs.map((n) => n.to).filter(Boolean)).size;
-  const maxScroll = scrolls.reduce((m, s) => Math.max(m, s.maxDepth), 0);
+  const pageScrolls = scrolls.filter((s) => s.url === location.pathname);
+  const maxScroll = pageScrolls.reduce((m, s) => Math.max(m, s.maxDepth), 0);
   const duration = events.length > 1 ? Math.round((events[events.length - 1].timestamp - events[0].timestamp) / 1e3) : 0;
   return {
     clicks: getClicks(events).length,
@@ -2376,16 +2411,28 @@ function bindEvents(root) {
   root.querySelector(`#${PREFIX}-btn-ai`)?.addEventListener("click", () => {
     const sessionName = getSessionName() ?? void 0;
     const summary = summarize(_allEvents, sessionName);
-    exportSummaryJSON(summary, sessionName);
-    showToast("AI summary exported!");
+    const didExport = exportSummaryJSON(summary, sessionName);
+    if (didExport) {
+      showToast("AI summary exported!");
+    } else {
+      showToast("AI summary export failed. Check browser download permissions.", 3e3, "error");
+    }
   });
   root.querySelector(`#${PREFIX}-btn-json`)?.addEventListener("click", () => {
-    exportJSON(_allEvents, getSessionName() ?? void 0);
-    showToast("JSON exported!");
+    const didExport = exportJSON(_allEvents, getSessionName() ?? void 0);
+    if (didExport) {
+      showToast("JSON exported!");
+    } else {
+      showToast("JSON export failed. Check browser download permissions.", 3e3, "error");
+    }
   });
   root.querySelector(`#${PREFIX}-btn-csv`)?.addEventListener("click", () => {
-    exportCSV(_allEvents, getSessionName() ?? void 0);
-    showToast("CSV exported!");
+    const didExport = exportCSV(_allEvents, getSessionName() ?? void 0);
+    if (didExport) {
+      showToast("CSV exported!");
+    } else {
+      showToast("CSV export failed. Check browser download permissions.", 3e3, "error");
+    }
   });
   root.querySelector(`#${PREFIX}-btn-heatmap-png`)?.addEventListener("click", () => {
     renderHeatmap(getClicks(_allEvents));
@@ -2393,8 +2440,12 @@ function bindEvents(root) {
     showToast("Heatmap PNG downloaded!");
   });
   root.querySelector(`#${PREFIX}-btn-flow`)?.addEventListener("click", () => {
-    downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? void 0);
-    showToast("Flow diagram downloaded!");
+    const didExport = downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? void 0);
+    if (didExport) {
+      showToast("Flow diagram downloaded!");
+    } else {
+      showToast("Flow export failed. Check browser download permissions.", 3e3, "error");
+    }
   });
   root.querySelector(`#${PREFIX}-btn-clear`)?.addEventListener("click", async () => {
     if (!confirm("Clear all Recap session data? This cannot be undone.")) return;
@@ -2472,7 +2523,10 @@ const Recap = {
     _destroyFns.push(stopBuffer);
     const stopClicks = initClickCapture((e) => push(e), strip);
     const stopScroll = initScrollCapture((e) => push(e), strip);
-    const stopNav = initNavigationCapture((e) => push(e), strip);
+    const stopNav = initNavigationCapture((e) => {
+      push(e);
+      if (e.method !== "pageload") refreshScrollCapture();
+    }, strip);
     _destroyFns.push(stopClicks, stopScroll, stopNav);
     const shortcut = config.shortcut ?? "Alt+Shift+R";
     const onKey = (e) => {

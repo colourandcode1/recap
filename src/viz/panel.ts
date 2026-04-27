@@ -77,9 +77,48 @@ const STYLES = `
   }
   .${PREFIX}-close:hover { color: #fff; }
   .${PREFIX}-body {
-    overflow-y: auto;
     padding: 12px 14px;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .${PREFIX}-content-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .${PREFIX}-tab-content {
+    min-height: 170px;
+  }
+  .${PREFIX}-tab-content-timeline {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+  }
+  .${PREFIX}-timeline-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .${PREFIX}-timeline-empty {
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    color: #718096;
+    text-align: center;
+    padding: 10px 16px;
+  }
+  .${PREFIX}-timeline-empty-title {
+    color: #a0aec0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .${PREFIX}-timeline-empty-copy {
+    font-size: 11px;
   }
   .${PREFIX}-section {
     margin-bottom: 14px;
@@ -293,6 +332,10 @@ const STYLES = `
     z-index: 10001;
     animation: ${PREFIX}-fadein 0.2s ease;
   }
+  .${PREFIX}-toast.${PREFIX}-toast-error {
+    background: #742a2a;
+    color: #fed7d7;
+  }
   @keyframes ${PREFIX}-fadein {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -308,6 +351,7 @@ let _activeTab: 'heatmap' | 'timeline' = 'heatmap';
 let _heatmapFilter: HeatmapFilter | null = null;
 let _origPushState: typeof history.pushState | null = null;
 let _hasTrackedTooltipOpened = false;
+let _preferredPanelMinHeight = 0;
 
 function readStorage(key: string): string | null {
   try {
@@ -356,7 +400,7 @@ function openParticipantTab(): void {
     showToast('Opened a participant tab.');
     return;
   }
-  showToast('Unable to open a new tab. Please allow pop-ups for this site.');
+  showToast('Unable to open a new tab. Please allow pop-ups for this site.', 2500, 'error');
 }
 
 function handleUrlChange(): void {
@@ -377,9 +421,9 @@ function injectStyles(): void {
   document.head.appendChild(_styleEl);
 }
 
-function showToast(message: string, duration = 2500): void {
+function showToast(message: string, duration = 2500, tone: 'success' | 'error' = 'success'): void {
   const toast = document.createElement('div');
-  toast.className = `${PREFIX}-toast`;
+  toast.className = `${PREFIX}-toast ${tone === 'error' ? `${PREFIX}-toast-error` : ''}`.trim();
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => {
@@ -463,6 +507,7 @@ export async function openPanel(): Promise<void> {
     }
     render(_panelRoot, _sessions);
     _panelRoot.style.display = 'flex';
+    if (_activeTab === 'heatmap') syncPanelMinHeight(_panelRoot);
     pauseClickCapture();
     return;
   }
@@ -485,6 +530,7 @@ export async function openPanel(): Promise<void> {
 
   render(_panelRoot, _sessions);
   document.body.appendChild(_panelRoot);
+  if (_activeTab === 'heatmap') syncPanelMinHeight(_panelRoot);
 
   // Listen for SPA navigation so overlays stay in sync with the current page
   _origPushState = history.pushState.bind(history);
@@ -564,7 +610,7 @@ function render(
   `;
 
   const timelineTabContent = `
-    <div class="${PREFIX}-section" style="overflow-y:auto;max-height:calc(70vh - 240px)">
+    <div class="${PREFIX}-section ${PREFIX}-timeline-scroll">
       ${buildTimelineHTML(_allEvents, _currentSessionId)}
     </div>
   `;
@@ -575,41 +621,45 @@ function render(
       <button class="${PREFIX}-close" aria-label="Close panel">×</button>
     </div>
     <div class="${PREFIX}-body">
-      ${
-        sessions.length > 0
-          ? `<div class="${PREFIX}-section">
-               <div class="${PREFIX}-label-row">
-                 <div class="${PREFIX}-label-with-help" id="${PREFIX}-session-help-wrap">
-                   <div class="${PREFIX}-label">Session</div>
-                   <button
-                     class="${PREFIX}-help-btn"
-                     id="${PREFIX}-session-help"
-                     type="button"
-                     aria-label="How to add another participant"
-                   >i</button>
-                   <div class="${PREFIX}-hint-tooltip" role="tooltip">
-                        To add another participant, open this prototype in a new tab.
-                        <div class="${PREFIX}-hint-actions">
-                          <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
-                        </div>
+      <div class="${PREFIX}-content-scroll">
+        ${
+          sessions.length > 0
+            ? `<div class="${PREFIX}-section">
+                 <div class="${PREFIX}-label-row">
+                   <div class="${PREFIX}-label-with-help" id="${PREFIX}-session-help-wrap">
+                     <div class="${PREFIX}-label">Session</div>
+                     <button
+                       class="${PREFIX}-help-btn"
+                       id="${PREFIX}-session-help"
+                       type="button"
+                       aria-label="How to add another participant"
+                     >i</button>
+                     <div class="${PREFIX}-hint-tooltip" role="tooltip">
+                          To add another participant, open this prototype in a new tab.
+                          <div class="${PREFIX}-hint-actions">
+                            <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
+                          </div>
+                     </div>
                    </div>
                  </div>
-               </div>
-               <select class="${PREFIX}-select" id="${PREFIX}-session-select">
-                 ${sessionOptions}
-               </select>
-             </div>`
-          : ''
-      }
+                 <select class="${PREFIX}-select" id="${PREFIX}-session-select">
+                   ${sessionOptions}
+                 </select>
+               </div>`
+            : ''
+        }
 
-      <div class="${PREFIX}-tabs">
-        <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Overview</button>
-        <button class="${PREFIX}-tab ${_activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">Timeline</button>
+        <div class="${PREFIX}-tabs">
+          <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Overview</button>
+          <button class="${PREFIX}-tab ${_activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">Timeline</button>
+        </div>
+
+        <div class="${PREFIX}-tab-content ${_activeTab === 'timeline' ? `${PREFIX}-tab-content-timeline` : ''}">
+          ${_activeTab === 'heatmap' ? heatmapTabContent : timelineTabContent}
+        </div>
       </div>
 
-      ${_activeTab === 'heatmap' ? heatmapTabContent : timelineTabContent}
-
-      <div class="${PREFIX}-section">
+      <div class="${PREFIX}-section" style="margin-top:12px;margin-bottom:0;">
         <div class="${PREFIX}-label">Export</div>
         <div class="${PREFIX}-exports">
           <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-screenshot">📸 Screenshot</button>
@@ -627,6 +677,23 @@ function render(
   `;
 
   bindEvents(root);
+  syncPanelMinHeight(root);
+}
+
+function syncPanelMinHeight(root: HTMLDivElement): void {
+  // Keep Timeline from collapsing when there is little/no timeline data by
+  // reusing the latest "good" Overview height as a minimum panel height.
+  if (_activeTab === 'heatmap') {
+    root.style.minHeight = '';
+    const measuredHeight = Math.round(root.getBoundingClientRect().height);
+    if (measuredHeight > 0) {
+      _preferredPanelMinHeight = measuredHeight;
+    }
+  }
+
+  if (_preferredPanelMinHeight <= 0) return;
+  const maxAllowedHeight = Math.floor(window.innerHeight * 0.7);
+  root.style.minHeight = `${Math.min(_preferredPanelMinHeight, maxAllowedHeight)}px`;
 }
 
 function bindEvents(root: HTMLDivElement): void {
@@ -755,24 +822,36 @@ function bindEvents(root: HTMLDivElement): void {
     ?.addEventListener('click', () => {
       const sessionName = getSessionName() ?? undefined;
       const summary = summarize(_allEvents, sessionName);
-      exportSummaryJSON(summary, sessionName);
-      showToast('AI summary exported!');
+      const didExport = exportSummaryJSON(summary, sessionName);
+      if (didExport) {
+        showToast('AI summary exported!');
+      } else {
+        showToast('AI summary export failed. Check browser download permissions.', 3000, 'error');
+      }
     });
 
   // Raw JSON
   root
     .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-json`)
     ?.addEventListener('click', () => {
-      exportJSON(_allEvents, getSessionName() ?? undefined);
-      showToast('JSON exported!');
+      const didExport = exportJSON(_allEvents, getSessionName() ?? undefined);
+      if (didExport) {
+        showToast('JSON exported!');
+      } else {
+        showToast('JSON export failed. Check browser download permissions.', 3000, 'error');
+      }
     });
 
   // CSV
   root
     .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-csv`)
     ?.addEventListener('click', () => {
-      exportCSV(_allEvents, getSessionName() ?? undefined);
-      showToast('CSV exported!');
+      const didExport = exportCSV(_allEvents, getSessionName() ?? undefined);
+      if (didExport) {
+        showToast('CSV exported!');
+      } else {
+        showToast('CSV export failed. Check browser download permissions.', 3000, 'error');
+      }
     });
 
   // Heatmap PNG
@@ -788,8 +867,12 @@ function bindEvents(root: HTMLDivElement): void {
   root
     .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-flow`)
     ?.addEventListener('click', () => {
-      downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? undefined);
-      showToast('Flow diagram downloaded!');
+      const didExport = downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? undefined);
+      if (didExport) {
+        showToast('Flow diagram downloaded!');
+      } else {
+        showToast('Flow export failed. Check browser download permissions.', 3000, 'error');
+      }
     });
 
   // Clear data
@@ -867,4 +950,5 @@ export function destroyPanel(): void {
   _styleEl?.parentElement?.removeChild(_styleEl);
   _panelRoot = null;
   _styleEl = null;
+  _preferredPanelMinHeight = 0;
 }
