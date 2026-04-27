@@ -5,6 +5,8 @@ import type { ScrollEvent } from '../types.js';
 let _overlay: HTMLDivElement | null = null;
 let _marker: HTMLDivElement | null = null;
 let _label: HTMLDivElement | null = null;
+let _isVisible = false;
+let _hideTimeout: number | null = null;
 
 export function initScrollDepthOverlay(): void {
   if (_overlay) return;
@@ -106,6 +108,11 @@ export function updateScrollDepthOverlay(events: ScrollEvent[]): void {
 
 export function showScrollDepthOverlay(events: ScrollEvent[]): void {
   if (!_overlay) initScrollDepthOverlay();
+  _isVisible = true;
+  if (_hideTimeout !== null) {
+    window.clearTimeout(_hideTimeout);
+    _hideTimeout = null;
+  }
   if (_overlay) {
     _overlay.style.display = 'block';
     setTimeout(() => { if (_overlay) _overlay.style.opacity = '0.75'; }, 10);
@@ -114,24 +121,35 @@ export function showScrollDepthOverlay(events: ScrollEvent[]): void {
 }
 
 export function hideScrollDepthOverlay(): void {
+  _isVisible = false;
   if (_overlay) {
     _overlay.style.opacity = '0';
-    setTimeout(() => { if (_overlay) _overlay.style.display = 'none'; }, 300);
+    if (_hideTimeout !== null) {
+      window.clearTimeout(_hideTimeout);
+    }
+    _hideTimeout = window.setTimeout(() => {
+      if (_overlay && !_isVisible) _overlay.style.display = 'none';
+      _hideTimeout = null;
+    }, 300);
   }
   if (_marker) _marker.style.display = 'none';
   if (_label) _label.style.display = 'none';
 }
 
 export function isScrollDepthVisible(): boolean {
-  if (!_overlay) return false;
-  return _overlay.style.display !== 'none';
+  return _isVisible;
 }
 
 export function destroyScrollDepthOverlay(): void {
+  if (_hideTimeout !== null) {
+    window.clearTimeout(_hideTimeout);
+    _hideTimeout = null;
+  }
   _overlay?.parentElement?.removeChild(_overlay);
   _marker?.parentElement?.removeChild(_marker);
   _label?.parentElement?.removeChild(_label);
   _overlay = null;
   _marker = null;
   _label = null;
+  _isVisible = false;
 }
