@@ -108,4 +108,13 @@ describe('participant guidance in panel', () => {
     expect(events.some((e) => e.action === 'tooltip_opened')).toBe(true);
     expect(events.some((e) => e.action === 'open_tab_clicked')).toBe(true);
   });
+
+  it('opens Recap UX docs from the session row button', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => window);
+
+    await openPanel();
+    (document.querySelector('#recap-panel-btn-docs-link') as HTMLButtonElement).click();
+
+    expect(openSpy).toHaveBeenCalledWith('https://www.recap-ux.com', '_blank', 'noopener,noreferrer');
+  });
 });

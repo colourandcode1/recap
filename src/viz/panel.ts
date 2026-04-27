@@ -25,6 +25,7 @@ import { generateTimeline } from '../analysis/timeline.js';
 const PREFIX = 'recap-panel';
 const PARTICIPANT_GUIDANCE_METRICS_KEY = 'recap-participant-guidance-metrics';
 const PARTICIPANT_GUIDANCE_EVENT = 'recap:participant-guidance';
+const RECAP_DOCS_URL = 'https://www.recap-ux.com';
 
 type ParticipantGuidanceAction =
   | 'tooltip_opened'
@@ -133,6 +134,8 @@ const STYLES = `
   .${PREFIX}-label-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 6px;
   }
   .${PREFIX}-label-with-help {
@@ -200,6 +203,24 @@ const STYLES = `
     font-family: system-ui, sans-serif;
   }
   .${PREFIX}-inline-link:hover { color: #90cdf4; }
+  .${PREFIX}-docs-link-btn {
+    border: 1px solid #4a5568;
+    border-radius: 4px;
+    background: #2d3748;
+    color: #bee3f8;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: system-ui, sans-serif;
+    white-space: nowrap;
+  }
+  .${PREFIX}-docs-link-btn:hover,
+  .${PREFIX}-docs-link-btn:focus-visible {
+    background: #3a4a6b;
+    border-color: #4299e1;
+    color: #e2e8f0;
+  }
   .${PREFIX}-select {
     width: 100%;
     background: #2d3748;
@@ -401,6 +422,13 @@ function openParticipantTab(): void {
     return;
   }
   showToast('Unable to open a new tab. Please allow pop-ups for this site.', 2500, 'error');
+}
+
+function openDocsSite(): void {
+  const tab = window.open(RECAP_DOCS_URL, '_blank', 'noopener,noreferrer');
+  if (!tab) {
+    showToast('Unable to open docs. Please allow pop-ups for this site.', 2500, 'error');
+  }
 }
 
 function handleUrlChange(): void {
@@ -641,6 +669,12 @@ function render(
                           </div>
                      </div>
                    </div>
+                   <button
+                     class="${PREFIX}-docs-link-btn"
+                     id="${PREFIX}-btn-docs-link"
+                     type="button"
+                     aria-label="Open Recap UX docs"
+                   >Help</button>
                  </div>
                  <select class="${PREFIX}-select" id="${PREFIX}-session-select">
                    ${sessionOptions}
@@ -729,6 +763,10 @@ function bindEvents(root: HTMLDivElement): void {
     btn.addEventListener('click', () => {
       openParticipantTab();
     });
+  });
+
+  root.querySelector<HTMLButtonElement>(`#${PREFIX}-btn-docs-link`)?.addEventListener('click', () => {
+    openDocsSite();
   });
 
   // Tab switching
