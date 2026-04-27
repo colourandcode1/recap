@@ -23,6 +23,24 @@ function sanitizeFilename(filename: string): string {
   return `${safeBase}.${safeExt}`;
 }
 
+function triggerDownload(dataUrl: string, filename: string): boolean {
+  const anchor = document.createElement('a');
+  try {
+    anchor.href = dataUrl;
+    anchor.download = sanitizeFilename(filename);
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    return true;
+  } catch (err) {
+    console.error('[Recap] Download failed:', err);
+    if (anchor.parentElement) anchor.parentElement.removeChild(anchor);
+    return false;
+  }
+}
+
+// Kept for public API consumers who need to download binary blobs.
 export function downloadBlob(blob: Blob, filename: string): boolean {
   let objectUrl = '';
   let anchor: HTMLAnchorElement | null = null;
@@ -31,7 +49,6 @@ export function downloadBlob(blob: Blob, filename: string): boolean {
     anchor = document.createElement('a');
     anchor.href = objectUrl;
     anchor.download = sanitizeFilename(filename);
-    anchor.rel = 'noopener';
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();
@@ -40,7 +57,6 @@ export function downloadBlob(blob: Blob, filename: string): boolean {
     console.error('[Recap] Download failed:', err);
     return false;
   } finally {
-    // Delay cleanup enough for browsers that defer blob download startup.
     setTimeout(() => {
       if (anchor?.parentElement) {
         anchor.parentElement.removeChild(anchor);
@@ -50,6 +66,13 @@ export function downloadBlob(blob: Blob, filename: string): boolean {
       }
     }, 4000);
   }
+}
+
+export function downloadText(content: string, mimeType: string, filename: string): boolean {
+  return triggerDownload(
+    `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`,
+    filename
+  );
 }
 
 export function buildFilename(prefix: string, ext: string): string {
@@ -63,11 +86,11 @@ export function exportJSON(events: AnyEvent[], sessionName?: string): boolean {
     sessionName,
     events,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json',
-  });
   const name = sessionName ? `recap-${sessionName}` : 'recap-session';
-  return downloadBlob(blob, buildFilename(name, 'json'));
+  return triggerDownload(
+    `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload, null, 2))}`,
+    buildFilename(name, 'json')
+  );
 }
 
 export function exportCSV(events: AnyEvent[], sessionName?: string): boolean {
@@ -140,9 +163,11 @@ export function exportCSV(events: AnyEvent[], sessionName?: string): boolean {
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n');
 
-  const blob = new Blob([csv], { type: 'text/csv' });
   const name = sessionName ? `recap-${sessionName}` : 'recap-session';
-  return downloadBlob(blob, buildFilename(name, 'csv'));
+  return triggerDownload(
+    `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`,
+    buildFilename(name, 'csv')
+  );
 }
 
 export async function copyToClipboard(events: AnyEvent[]): Promise<void> {
@@ -151,9 +176,9 @@ export async function copyToClipboard(events: AnyEvent[]): Promise<void> {
 }
 
 export function exportSummaryJSON(summary: object, sessionName?: string): boolean {
-  const blob = new Blob([JSON.stringify(summary, null, 2)], {
-    type: 'application/json',
-  });
   const name = sessionName ? `recap-ai-${sessionName}` : 'recap-ai-summary';
-  return downloadBlob(blob, buildFilename(name, 'json'));
+  return triggerDownload(
+    `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(summary, null, 2))}`,
+    buildFilename(name, 'json')
+  );
 }

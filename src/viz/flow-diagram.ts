@@ -1,7 +1,7 @@
 // Navigation flow diagram — exports an SVG showing the page sequence.
 
 import type { NavigationEvent } from '../types.js';
-import { buildFilename, downloadBlob } from '../storage/export.js';
+import { buildFilename, downloadText } from '../storage/export.js';
 
 interface FlowNode {
   url: string;
@@ -122,7 +122,6 @@ export function generateFlowSVG(navEvents: NavigationEvent[]): string {
 
 export function downloadFlowDiagram(navEvents: NavigationEvent[], sessionName?: string): boolean {
   const svg = generateFlowSVG(navEvents);
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
   const name = sessionName ? `recap-flow-${sessionName}` : 'recap-flow';
-  return downloadBlob(blob, buildFilename(name, 'svg'));
+  return downloadText(svg, 'image/svg+xml', buildFilename(name, 'svg'));
 }
