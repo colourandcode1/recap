@@ -1744,6 +1744,9 @@ const TIMELINE_STYLES = `
   }
 `;
 const PREFIX = "recap-panel";
+const PARTICIPANT_HINT_DISMISSED_KEY = "recap-participant-hint-dismissed";
+const PARTICIPANT_GUIDANCE_METRICS_KEY = "recap-participant-guidance-metrics";
+const PARTICIPANT_GUIDANCE_EVENT = "recap:participant-guidance";
 const STYLES = `
   .${PREFIX}-root {
     position: fixed;
@@ -1804,6 +1807,78 @@ const STYLES = `
     letter-spacing: 0.08em;
     color: #718096;
     margin-bottom: 6px;
+  }
+  .${PREFIX}-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .${PREFIX}-label-row .${PREFIX}-label {
+    margin-bottom: 0;
+  }
+  .${PREFIX}-help-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid #4a5568;
+    background: #2d3748;
+    color: #a0aec0;
+    font-size: 11px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .${PREFIX}-help-btn:hover,
+  .${PREFIX}-help-btn[aria-expanded="true"] {
+    background: #3a4a6b;
+    border-color: #4299e1;
+    color: #bee3f8;
+  }
+  .${PREFIX}-hint-tooltip {
+    background: #0f172a;
+    border: 1px solid #2d4a74;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: #dbeafe;
+  }
+  .${PREFIX}-hint-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .${PREFIX}-inline-link {
+    border: none;
+    background: none;
+    color: #63b3ed;
+    font-size: 11px;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: system-ui, sans-serif;
+  }
+  .${PREFIX}-inline-link:hover { color: #90cdf4; }
+  .${PREFIX}-participant-hint {
+    margin-top: 8px;
+    background: #172554;
+    border: 1px solid #2c5282;
+    color: #dbeafe;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .${PREFIX}-participant-hint-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
   }
   .${PREFIX}-select {
     width: 100%;
@@ -1950,6 +2025,60 @@ let _sessions = [];
 let _activeTab = "heatmap";
 let _heatmapFilter = null;
 let _origPushState = null;
+let _isSessionHelpOpen = false;
+let _hasTrackedParticipantHintShown = false;
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+  }
+}
+function isParticipantHintDismissed() {
+  return readStorage(PARTICIPANT_HINT_DISMISSED_KEY) === "1";
+}
+function dismissParticipantHint() {
+  writeStorage(PARTICIPANT_HINT_DISMISSED_KEY, "1");
+}
+function trackParticipantGuidance(action) {
+  const fallback = {
+    hint_shown: 0,
+    hint_dismissed: 0,
+    tooltip_opened: 0,
+    open_tab_clicked: 0
+  };
+  let metrics = fallback;
+  const raw = readStorage(PARTICIPANT_GUIDANCE_METRICS_KEY);
+  if (raw) {
+    try {
+      metrics = { ...fallback, ...JSON.parse(raw) };
+    } catch {
+      metrics = fallback;
+    }
+  }
+  metrics[action] += 1;
+  writeStorage(PARTICIPANT_GUIDANCE_METRICS_KEY, JSON.stringify(metrics));
+  window.dispatchEvent(
+    new CustomEvent(PARTICIPANT_GUIDANCE_EVENT, {
+      detail: { action, metrics, timestamp: Date.now() }
+    })
+  );
+}
+function openParticipantTab() {
+  const tab = window.open(location.href, "_blank", "noopener,noreferrer");
+  if (tab) {
+    trackParticipantGuidance("open_tab_clicked");
+    showToast("Opened a participant tab.");
+    return;
+  }
+  showToast("Unable to open a new tab. Please allow pop-ups for this site.");
+}
 function handleUrlChange() {
   if (!_panelRoot || _panelRoot.style.display === "none") return;
   if (_heatmapFilter && _heatmapFilter.pagePath !== location.pathname) {
@@ -2063,6 +2192,11 @@ async function openPanel() {
 }
 function render(root, sessions) {
   const stats = getStats(_allEvents);
+  const showParticipantHint = sessions.length > 0 && !isParticipantHintDismissed();
+  if (showParticipantHint && !_hasTrackedParticipantHintShown) {
+    trackParticipantGuidance("hint_shown");
+    _hasTrackedParticipantHintShown = true;
+  }
   const sessionOptions = sessions.map(
     (s) => `<option value="${s.sessionId}" ${s.sessionId === _currentSessionId ? "selected" : ""}>
           ${s.sessionId.slice(0, 8)} (${s.eventCount} events)
@@ -2125,10 +2259,32 @@ function render(root, sessions) {
     </div>
     <div class="${PREFIX}-body">
       ${sessions.length > 0 ? `<div class="${PREFIX}-section">
-               <div class="${PREFIX}-label">Session</div>
+               <div class="${PREFIX}-label-row">
+                 <div class="${PREFIX}-label">Session</div>
+                 <button
+                   class="${PREFIX}-help-btn"
+                   id="${PREFIX}-session-help"
+                   type="button"
+                   aria-label="How to add another participant"
+                   aria-expanded="${_isSessionHelpOpen ? "true" : "false"}"
+                 >i</button>
+               </div>
+               ${_isSessionHelpOpen ? `<div class="${PREFIX}-hint-tooltip" role="note">
+                        To add another participant, open this prototype in a new tab.
+                        <div class="${PREFIX}-hint-actions">
+                          <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
+                        </div>
+                      </div>` : ""}
                <select class="${PREFIX}-select" id="${PREFIX}-session-select">
                  ${sessionOptions}
                </select>
+               ${showParticipantHint ? `<div class="${PREFIX}-participant-hint" role="note">
+                        To add another participant, open this prototype in a new tab.
+                        <div class="${PREFIX}-participant-hint-actions">
+                          <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
+                          <button class="${PREFIX}-inline-link" id="${PREFIX}-dismiss-participant-hint" type="button">Don't show again</button>
+                        </div>
+                      </div>` : ""}
              </div>` : ""}
 
       <div class="${PREFIX}-tabs">
@@ -2167,6 +2323,24 @@ function bindEvents(root) {
     if (isHeatmapVisible()) {
       renderHeatmap(getClicks(_allEvents));
     }
+    render(root, _sessions);
+  });
+  root.querySelector(`#${PREFIX}-session-help`)?.addEventListener("click", () => {
+    const nextOpenState = !_isSessionHelpOpen;
+    _isSessionHelpOpen = nextOpenState;
+    if (nextOpenState) {
+      trackParticipantGuidance("tooltip_opened");
+    }
+    render(root, _sessions);
+  });
+  root.querySelectorAll(`.${PREFIX}-btn-open-participant`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openParticipantTab();
+    });
+  });
+  root.querySelector(`#${PREFIX}-dismiss-participant-hint`)?.addEventListener("click", () => {
+    dismissParticipantHint();
+    trackParticipantGuidance("hint_dismissed");
     render(root, _sessions);
   });
   root.querySelectorAll(`.${PREFIX}-tab`).forEach((btn) => {

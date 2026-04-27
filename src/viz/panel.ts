@@ -23,6 +23,12 @@ import { buildTimelineHTML, TIMELINE_STYLES } from './timeline-view.js';
 import { generateTimeline } from '../analysis/timeline.js';
 
 const PREFIX = 'recap-panel';
+const PARTICIPANT_GUIDANCE_METRICS_KEY = 'recap-participant-guidance-metrics';
+const PARTICIPANT_GUIDANCE_EVENT = 'recap:participant-guidance';
+
+type ParticipantGuidanceAction =
+  | 'tooltip_opened'
+  | 'open_tab_clicked';
 
 const STYLES = `
   .${PREFIX}-root {
@@ -85,6 +91,76 @@ const STYLES = `
     color: #718096;
     margin-bottom: 6px;
   }
+  .${PREFIX}-label-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .${PREFIX}-label-with-help {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .${PREFIX}-label-with-help .${PREFIX}-label {
+    margin-bottom: 0;
+  }
+  .${PREFIX}-help-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid #4a5568;
+    background: #2d3748;
+    color: #a0aec0;
+    font-size: 11px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .${PREFIX}-help-btn:hover,
+  .${PREFIX}-help-btn:focus-visible {
+    background: #3a4a6b;
+    border-color: #4299e1;
+    color: #bee3f8;
+  }
+  .${PREFIX}-hint-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 250px;
+    background: #0f172a;
+    border: 1px solid #2d4a74;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #dbeafe;
+    z-index: 2;
+  }
+  .${PREFIX}-label-with-help:hover .${PREFIX}-hint-tooltip,
+  .${PREFIX}-label-with-help:focus-within .${PREFIX}-hint-tooltip {
+    display: block;
+  }
+  .${PREFIX}-hint-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .${PREFIX}-inline-link {
+    border: none;
+    background: none;
+    color: #63b3ed;
+    font-size: 11px;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: system-ui, sans-serif;
+  }
+  .${PREFIX}-inline-link:hover { color: #90cdf4; }
   .${PREFIX}-select {
     width: 100%;
     background: #2d3748;
@@ -231,6 +307,57 @@ let _sessions: Awaited<ReturnType<typeof getAllSessions>> = [];
 let _activeTab: 'heatmap' | 'timeline' = 'heatmap';
 let _heatmapFilter: HeatmapFilter | null = null;
 let _origPushState: typeof history.pushState | null = null;
+let _hasTrackedTooltipOpened = false;
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore storage failures in private browsing modes
+  }
+}
+
+function trackParticipantGuidance(action: ParticipantGuidanceAction): void {
+  const fallback = {
+    tooltip_opened: 0,
+    open_tab_clicked: 0,
+  };
+  let metrics = fallback;
+  const raw = readStorage(PARTICIPANT_GUIDANCE_METRICS_KEY);
+  if (raw) {
+    try {
+      metrics = { ...fallback, ...(JSON.parse(raw) as Partial<typeof fallback>) };
+    } catch {
+      metrics = fallback;
+    }
+  }
+  metrics[action] += 1;
+  writeStorage(PARTICIPANT_GUIDANCE_METRICS_KEY, JSON.stringify(metrics));
+
+  window.dispatchEvent(
+    new CustomEvent(PARTICIPANT_GUIDANCE_EVENT, {
+      detail: { action, metrics, timestamp: Date.now() },
+    })
+  );
+}
+
+function openParticipantTab(): void {
+  const tab = window.open(location.href, '_blank', 'noopener,noreferrer');
+  if (tab) {
+    trackParticipantGuidance('open_tab_clicked');
+    showToast('Opened a participant tab.');
+    return;
+  }
+  showToast('Unable to open a new tab. Please allow pop-ups for this site.');
+}
 
 function handleUrlChange(): void {
   if (!_panelRoot || _panelRoot.style.display === 'none') return;
@@ -450,7 +577,23 @@ function render(
       ${
         sessions.length > 0
           ? `<div class="${PREFIX}-section">
-               <div class="${PREFIX}-label">Session</div>
+               <div class="${PREFIX}-label-row">
+                 <div class="${PREFIX}-label-with-help" id="${PREFIX}-session-help-wrap">
+                   <div class="${PREFIX}-label">Session</div>
+                   <button
+                     class="${PREFIX}-help-btn"
+                     id="${PREFIX}-session-help"
+                     type="button"
+                     aria-label="How to add another participant"
+                   >i</button>
+                   <div class="${PREFIX}-hint-tooltip" role="tooltip">
+                        To add another participant, open this prototype in a new tab.
+                        <div class="${PREFIX}-hint-actions">
+                          <button class="${PREFIX}-inline-link ${PREFIX}-btn-open-participant" type="button">Open in new tab</button>
+                        </div>
+                   </div>
+                 </div>
+               </div>
                <select class="${PREFIX}-select" id="${PREFIX}-session-select">
                  ${sessionOptions}
                </select>
@@ -503,6 +646,22 @@ function bindEvents(root: HTMLDivElement): void {
       }
       render(root, _sessions);
     });
+
+  const sessionHelpWrap = root.querySelector<HTMLDivElement>(`#${PREFIX}-session-help-wrap`);
+  const trackTooltipOpen = () => {
+    if (!_hasTrackedTooltipOpened) {
+      trackParticipantGuidance('tooltip_opened');
+      _hasTrackedTooltipOpened = true;
+    }
+  };
+  sessionHelpWrap?.addEventListener('mouseenter', trackTooltipOpen, { once: true });
+  sessionHelpWrap?.addEventListener('focusin', trackTooltipOpen, { once: true });
+
+  root.querySelectorAll<HTMLButtonElement>(`.${PREFIX}-btn-open-participant`).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openParticipantTab();
+    });
+  });
 
   // Tab switching
   root.querySelectorAll<HTMLButtonElement>(`.${PREFIX}-tab`).forEach((btn) => {

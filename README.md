@@ -27,6 +27,20 @@ Add one line to any prototype:
 
 That's it. Recap starts recording silently. When you're ready to review, press `Alt+Shift+R` to open the researcher panel.
 
+### In-person moderated tests
+
+When you're testing in person and need to add another participant, open the same prototype in a new browser tab. Recap creates a new session per tab, so each participant is captured separately.
+
+The researcher panel now includes:
+
+- A `Session` help icon directly beside the label
+- A hover/focus tooltip with: "To add another participant, open this prototype in a new tab."
+- An `Open in new tab` shortcut inside the tooltip
+
+For lightweight instrumentation, Recap emits a `recap:participant-guidance` browser event and stores aggregate counts in local storage under `recap-participant-guidance-metrics`.
+
+A ready-to-run moderated validation script lives at [`examples/in-person-usability-validation.md`](./examples/in-person-usability-validation.md).
+
 ## What Recap captures
 
 - **Click positions** with auto-generated CSS selectors and semantic element labels
