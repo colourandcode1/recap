@@ -201,3 +201,16 @@ export function resetScrollState(): void {
   _maxDepth = 0;
   _lastLoggedDepth = 0;
 }
+
+export function refreshScrollCapture(): void {
+  setTimeout(() => {
+    _maxDepth = 0;
+    _lastLoggedDepth = 0;
+    try {
+      createSentinels();
+      setupObserver();
+    } catch (err) {
+      console.error('[Recap] refreshScrollCapture error:', err);
+    }
+  }, 0);
+}

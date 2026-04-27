@@ -439,7 +439,8 @@ function getStats(events: AnyEvent[]): {
   const navs = getNavs(events);
   const scrolls = getScrolls(events);
   const pages = new Set(navs.map((n) => n.to).filter(Boolean)).size;
-  const maxScroll = scrolls.reduce((m, s) => Math.max(m, s.maxDepth), 0);
+  const pageScrolls = scrolls.filter((s) => s.url === location.pathname);
+  const maxScroll = pageScrolls.reduce((m, s) => Math.max(m, s.maxDepth), 0);
   const duration =
     events.length > 1
       ? Math.round((events[events.length - 1]!.timestamp - events[0]!.timestamp) / 1000)

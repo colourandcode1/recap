@@ -4,7 +4,7 @@
 import type { RecapConfig, AnyEvent } from './types.js';
 import { getSessionId, setSessionName } from './capture/session.js';
 import { initClickCapture } from './capture/clicks.js';
-import { initScrollCapture } from './capture/scroll.js';
+import { initScrollCapture, refreshScrollCapture } from './capture/scroll.js';
 import { initNavigationCapture } from './capture/navigation.js';
 import { initBuffer, flush, push, getBuffer } from './storage/buffer.js';
 import { saveEvents, purgeOldSessions } from './storage/idb.js';
@@ -48,7 +48,10 @@ export const Recap = {
     // Start capture layers
     const stopClicks = initClickCapture((e) => push(e), strip);
     const stopScroll = initScrollCapture((e) => push(e), strip);
-    const stopNav = initNavigationCapture((e) => push(e), strip);
+    const stopNav = initNavigationCapture((e) => {
+      push(e);
+      if (e.method !== 'pageload') refreshScrollCapture();
+    }, strip);
 
     _destroyFns.push(stopClicks, stopScroll, stopNav);
 
