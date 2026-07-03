@@ -44,6 +44,7 @@ A ready-to-run moderated validation script lives at [`examples/in-person-usabili
 ## What Recap captures
 
 - **Click positions** with auto-generated CSS selectors and semantic element labels
+- **Cursor trails** — sampled mouse positions (coordinates only), so replays show hesitation and hover behaviour
 - **Scroll depth** per page, with milestone and continuous tracking
 - **Navigation flow** — which pages users visited, in what order, for how long
 - **Interaction patterns** — hesitation, rapid clicks, backtracking, ignored regions
@@ -77,6 +78,29 @@ All options are `data-*` attributes on the script tag:
 | `data-idle-timeout` | `180` | Seconds of inactivity before idle prompt (participant mode) |
 | `data-end-message` | `""` | Instructions shown on the download screen (participant mode) |
 | `data-hide-pill` | `"false"` | Hide the finish button in participant mode |
+| `data-capture-moves` | `"true"` | Record sampled cursor trails (coordinates only) for replay |
+
+## Session replay
+
+Watch a participant's session play back on top of the live prototype — animated cursor, click markers, scrolling, and page navigation — rebuilt entirely from the recorded event log. No screen recording, no DOM snapshots, no page content stored: the same privacy guarantees apply.
+
+Open the researcher panel (`Alt+Shift+R`) and either:
+
+- **▶ Replay session** — replays the session selected in the session dropdown, or
+- **Import JSON…** — replays a participant's exported session file.
+
+A playback bar appears with play/pause, a scrubber, and 1×/2×/4× speed. Because the replay runs over the live prototype, open the same prototype (and version) the participant tested. If your viewport differs from the participant's by more than 10%, Recap warns you — click markers re-anchor to the live elements, so they stay accurate even when the layout reflows.
+
+Programmatic API:
+
+```js
+await Recap.replaySession('session-id');      // from this browser's storage
+await Recap.replaySession({ events: [...] }); // from an imported export
+Recap.stopReplay();
+Recap.isReplaying();
+```
+
+Nothing is recorded while a replay is running — neither the replayed actions nor your own interactions.
 
 ## Participant mode
 
