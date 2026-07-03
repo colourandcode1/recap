@@ -3,7 +3,7 @@
 import type { AnyEvent } from '../types.js';
 
 const DB_NAME = 'recap-sessions';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'events';
 const RETENTION_DAYS = 30;
 
@@ -17,15 +17,25 @@ function openDB(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
+      const openReq = e.target as IDBOpenDBRequest;
+      const db = openReq.result;
+      let store: IDBObjectStore;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, {
+        store = db.createObjectStore(STORE_NAME, {
           keyPath: 'id',
           autoIncrement: true,
         });
         store.createIndex('sessionId', 'sessionId', { unique: false });
         store.createIndex('timestamp', 'timestamp', { unique: false });
         store.createIndex('type', 'type', { unique: false });
+      } else {
+        // v1 → v2 migration: access existing store via the version-change transaction
+        store = openReq.transaction!.objectStore(STORE_NAME);
+      }
+      // v2: wallTime index (epoch ms) for retention purge.
+      // v1 events lack wallTime — they are absent from this index and thus exempt from purge.
+      if (!store.indexNames.contains('wallTime')) {
+        store.createIndex('wallTime', 'wallTime', { unique: false });
       }
     };
 
@@ -174,7 +184,11 @@ export async function purgeOldSessions(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    const index = tx.objectStore(STORE_NAME).index('timestamp');
+    // Purge on wallTime (epoch ms), NOT timestamp: timestamps are performance.now()
+    // values (~ms since page load), so comparing them against an epoch cutoff
+    // matched every event and wiped all sessions on each init.
+    // Events without wallTime are not in this index → never purged here.
+    const index = tx.objectStore(STORE_NAME).index('wallTime');
     const req = index.openCursor(IDBKeyRange.upperBound(cutoff));
     req.onsuccess = (e) => {
       const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;

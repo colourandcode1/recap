@@ -1,7 +1,7 @@
 // Navigation tracking — monkey-patches history API, listens for popstate/hashchange.
 
 import type { NavigationEvent } from '../types.js';
-import { getSessionId, getTimestamp } from './session.js';
+import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl } from '../privacy/sanitize.js';
 
 type NavHandler = (event: NavigationEvent) => void;
@@ -21,6 +21,7 @@ function emit(from: string, to: string, method: NavigationEvent['method']): void
     const event: NavigationEvent = {
       sessionId: getSessionId(),
       timestamp: getTimestamp(),
+      wallTime: getWallTime(),
       type: 'navigation',
       url: to,
       viewport: { width: window.innerWidth, height: window.innerHeight },

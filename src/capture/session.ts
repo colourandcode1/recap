@@ -67,6 +67,11 @@ export function getTimestamp(): number {
   }
 }
 
+/** Absolute epoch ms — used for retention purge and cross-pageload ordering. */
+export function getWallTime(): number {
+  return Date.now();
+}
+
 export function getSessionStart(): number {
   // We store session start as a module-level var so all timestamps are relative to it
   return _sessionStart;

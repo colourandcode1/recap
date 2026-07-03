@@ -1,7 +1,7 @@
 // Click event capture — attaches a passive listener, records structured events.
 
 import type { ClickEvent, PageRegion, Viewport } from '../types.js';
-import { getSessionId, getTimestamp } from './session.js';
+import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl, isExcluded, extractLabel, nearestHeading } from '../privacy/sanitize.js';
 
 // --- CSS selector generation ---
@@ -188,6 +188,7 @@ function onDocumentClick(e: MouseEvent): void {
     const event: ClickEvent = {
       sessionId: getSessionId(),
       timestamp: getTimestamp(),
+      wallTime: getWallTime(),
       type: 'click',
       url: sanitizeUrl(location.href, _stripQuery),
       viewport,

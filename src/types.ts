@@ -11,7 +11,8 @@ export interface Viewport {
 export interface BaseEvent {
   id?: number; // assigned by IDB auto-increment
   sessionId: string;
-  timestamp: number; // performance.now() ms from session start
+  timestamp: number; // performance.now() ms (relative to page load — resets on full reload)
+  wallTime?: number; // Date.now() epoch ms — absolute time, used for retention purge and cross-pageload ordering
   type: EventType;
   url: string; // pathname only, no query params
   viewport: Viewport;

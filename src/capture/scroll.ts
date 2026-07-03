@@ -1,7 +1,7 @@
 // Scroll depth tracking — hybrid IntersectionObserver + rAF throttled listener.
 
 import type { ScrollEvent } from '../types.js';
-import { getSessionId, getTimestamp } from './session.js';
+import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl } from '../privacy/sanitize.js';
 
 type ScrollHandler = (event: ScrollEvent) => void;
@@ -40,6 +40,7 @@ function emitScroll(depth: number): void {
   const event: ScrollEvent = {
     sessionId: getSessionId(),
     timestamp: getTimestamp(),
+    wallTime: getWallTime(),
     type: 'scroll',
     url: sanitizeUrl(location.href, _stripQuery),
     viewport: { width: window.innerWidth, height: window.innerHeight },
