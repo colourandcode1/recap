@@ -1,0 +1,75 @@
+{
+  "exportedAt": "2026-07-03T10:00:00.000Z",
+  "sessionName": "participant-01",
+  "events": [
+    {
+      "id": 1,
+      "sessionId": "abc-123",
+      "timestamp": 100,
+      "wallTime": 1780000000000,
+      "type": "navigation",
+      "url": "/",
+      "viewport": { "width": 1280, "height": 800 },
+      "from": "",
+      "to": "/",
+      "method": "pageload"
+    },
+    {
+      "id": 2,
+      "sessionId": "abc-123",
+      "timestamp": 600,
+      "wallTime": 1780000000500,
+      "type": "move",
+      "url": "/",
+      "viewport": { "width": 1280, "height": 800 },
+      "points": [
+        { "t": 0, "x": 100, "y": 100 },
+        { "t": 100, "x": 200, "y": 150 },
+        { "t": 200, "x": 300, "y": 200 }
+      ]
+    },
+    {
+      "id": 3,
+      "sessionId": "abc-123",
+      "timestamp": 1100,
+      "wallTime": 1780000001000,
+      "type": "click",
+      "url": "/",
+      "viewport": { "width": 1280, "height": 800 },
+      "pageX": 300,
+      "pageY": 200,
+      "clientX": 300,
+      "clientY": 200,
+      "elementX": 0.5,
+      "elementY": 0.5,
+      "selector": "#nav-reports",
+      "tagName": "A",
+      "label": "Reports",
+      "nearestHeading": null,
+      "pageRegion": "top-center"
+    },
+    {
+      "id": 4,
+      "sessionId": "abc-123",
+      "timestamp": 1200,
+      "wallTime": 1780000001100,
+      "type": "navigation",
+      "url": "/reports",
+      "viewport": { "width": 1280, "height": 800 },
+      "from": "/",
+      "to": "/reports",
+      "method": "pushState"
+    },
+    {
+      "id": 5,
+      "sessionId": "abc-123",
+      "timestamp": 2100,
+      "wallTime": 1780000002000,
+      "type": "scroll",
+      "url": "/reports",
+      "viewport": { "width": 1280, "height": 800 },
+      "depth": 40,
+      "maxDepth": 40
+    }
+  ]
+}
