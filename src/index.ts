@@ -6,6 +6,7 @@ import { getSessionId, setSessionName } from './capture/session.js';
 import { initClickCapture } from './capture/clicks.js';
 import { initScrollCapture, refreshScrollCapture } from './capture/scroll.js';
 import { initNavigationCapture } from './capture/navigation.js';
+import { initMoveCapture, flushMoveBatch } from './capture/moves.js';
 import { initBuffer, flush, push, getBuffer } from './storage/buffer.js';
 import { saveEvents, purgeOldSessions } from './storage/idb.js';
 import { setEndpoint, sendBeaconBatch, hasEndpoint } from './storage/beacon.js';
@@ -46,14 +47,24 @@ export const Recap = {
     _destroyFns.push(stopBuffer);
 
     // Start capture layers
-    const stopClicks = initClickCapture((e) => push(e), strip);
+    const captureMoves = config.captureMoves !== false; // default true
+    const stopClicks = initClickCapture((e) => {
+      if (captureMoves) flushMoveBatch(); // keep move/click ordering sane
+      push(e);
+    }, strip);
     const stopScroll = initScrollCapture((e) => push(e), strip);
     const stopNav = initNavigationCapture((e) => {
+      if (captureMoves) flushMoveBatch();
       push(e);
       if (e.method !== 'pageload') refreshScrollCapture();
     }, strip);
 
     _destroyFns.push(stopClicks, stopScroll, stopNav);
+
+    if (captureMoves) {
+      const stopMoves = initMoveCapture((e) => push(e), strip);
+      _destroyFns.push(stopMoves);
+    }
 
     // Keyboard shortcut to toggle panel
     const shortcut = config.shortcut ?? 'Alt+Shift+R';
@@ -192,6 +203,7 @@ function readScriptConfig(): RecapConfig {
   if (el.dataset['endpoint']) config.endpoint = el.dataset['endpoint'];
   if (el.dataset['shortcut']) config.shortcut = el.dataset['shortcut'];
   if (el.dataset['stripQueryParams'] === 'false') config.stripQueryParams = false;
+  if (el.dataset['captureMoves'] === 'false') config.captureMoves = false;
 
   return config;
 }

@@ -3,6 +3,7 @@
 import type { NavigationEvent } from '../types.js';
 import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl } from '../privacy/sanitize.js';
+import { isCaptureSuppressed } from './suppress.js';
 
 type NavHandler = (event: NavigationEvent) => void;
 
@@ -16,7 +17,7 @@ const _originalPushState = history.pushState.bind(history);
 const _originalReplaceState = history.replaceState.bind(history);
 
 function emit(from: string, to: string, method: NavigationEvent['method']): void {
-  if (!_handler) return;
+  if (!_handler || isCaptureSuppressed()) return;
   try {
     const event: NavigationEvent = {
       sessionId: getSessionId(),

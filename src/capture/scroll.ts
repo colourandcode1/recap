@@ -3,6 +3,7 @@
 import type { ScrollEvent } from '../types.js';
 import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl } from '../privacy/sanitize.js';
+import { isCaptureSuppressed } from './suppress.js';
 
 type ScrollHandler = (event: ScrollEvent) => void;
 
@@ -34,7 +35,7 @@ function getScrollDepth(): number {
 }
 
 function emitScroll(depth: number): void {
-  if (!_handler) return;
+  if (!_handler || isCaptureSuppressed()) return;
   _maxDepth = Math.max(_maxDepth, depth);
 
   const event: ScrollEvent = {

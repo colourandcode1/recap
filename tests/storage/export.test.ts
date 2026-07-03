@@ -63,6 +63,39 @@ describe('storage export helpers', () => {
     expect(document.querySelector('a[download]')).toBeNull();
   });
 
+  it('filters move events out of CSV but keeps them in JSON', () => {
+    const withMove: AnyEvent[] = [
+      ...sampleEvents,
+      {
+        type: 'move',
+        sessionId: 'session-1',
+        timestamp: 2000,
+        url: '/home',
+        viewport: { width: 1280, height: 720 },
+        points: [
+          { t: 0, x: 5, y: 5 },
+          { t: 100, x: 15, y: 25 },
+        ],
+      },
+    ];
+
+    const hrefs: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      hrefs.push(this.href);
+    });
+
+    exportCSV(withMove);
+    exportJSON(withMove);
+
+    const csv = decodeURIComponent(hrefs[0]!.split(',').slice(1).join(','));
+    const json = decodeURIComponent(hrefs[1]!.split(',').slice(1).join(','));
+
+    expect(csv).not.toContain('"move"');
+    expect(csv.trim().split('\n')).toHaveLength(2); // header + click row only
+    expect(json).toContain('"move"');
+    expect(json).toContain('"points"');
+  });
+
   it('propagates success/failure contracts for JSON/CSV/AI exporters', () => {
     expect(exportJSON(sampleEvents, 'participant/01')).toBe(true);
     expect(exportCSV(sampleEvents)).toBe(true);

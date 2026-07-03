@@ -3,6 +3,7 @@
 import type { ClickEvent, PageRegion, Viewport } from '../types.js';
 import { getSessionId, getTimestamp, getWallTime } from './session.js';
 import { sanitizeUrl, isExcluded, extractLabel, nearestHeading } from '../privacy/sanitize.js';
+import { isCaptureSuppressed } from './suppress.js';
 
 // --- CSS selector generation ---
 
@@ -162,7 +163,7 @@ export function resumeClickCapture(): void { _paused = false; }
 function onDocumentClick(e: MouseEvent): void {
   try {
     const target = e.target as Element | null;
-    if (!target || !_handler || _paused) return;
+    if (!target || !_handler || _paused || isCaptureSuppressed()) return;
 
     // Privacy: skip excluded elements
     if (isExcluded(target)) return;

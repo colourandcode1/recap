@@ -1,7 +1,7 @@
 // Recap UX — shared TypeScript interfaces
 // All types are self-contained — no external type dependencies.
 
-export type EventType = 'click' | 'scroll' | 'navigation' | 'visibility' | 'resize';
+export type EventType = 'click' | 'scroll' | 'navigation' | 'visibility' | 'resize' | 'move';
 
 export interface Viewport {
   width: number;
@@ -57,7 +57,24 @@ export interface ResizeEvent extends BaseEvent {
   viewport: Viewport;
 }
 
-export type AnyEvent = ClickEvent | ScrollEvent | NavigationEvent | VisibilityEvent | ResizeEvent;
+export interface MovePoint {
+  t: number; // ms offset from the MoveEvent's timestamp
+  x: number; // pageX
+  y: number; // pageY
+}
+
+export interface MoveEvent extends BaseEvent {
+  type: 'move';
+  points: MovePoint[]; // sampled cursor trail (~100ms apart, max 20 per batch)
+}
+
+export type AnyEvent =
+  | ClickEvent
+  | ScrollEvent
+  | NavigationEvent
+  | VisibilityEvent
+  | ResizeEvent
+  | MoveEvent;
 
 // Page region — 3x3 grid
 export type PageRegion =
@@ -79,6 +96,7 @@ export interface RecapConfig {
   endpoint?: string; // optional beacon endpoint
   shortcut?: string; // override keyboard shortcut
   stripQueryParams?: boolean; // default true
+  captureMoves?: boolean; // sampled cursor trails (coordinates only), default true
 }
 
 // --- Session summary (AI export) ---

@@ -116,7 +116,9 @@ export function exportCSV(events: AnyEvent[], sessionName?: string): boolean {
     'navMethod',
   ];
 
-  const rows = events.map((e) => {
+  // Move events are polylines — they don't fit the flat CSV shape and would
+  // add noise. Full fidelity lives in the JSON export (the replay format).
+  const rows = events.filter((e) => e.type !== 'move').map((e) => {
     const base = [
       e.type,
       e.sessionId,
