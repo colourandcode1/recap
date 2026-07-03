@@ -63,13 +63,26 @@
     {
       "id": 5,
       "sessionId": "abc-123",
+      "timestamp": 1300,
+      "wallTime": 1780000001200,
+      "type": "scroll",
+      "url": "/reports",
+      "viewport": { "width": 1280, "height": 800 },
+      "depth": 25,
+      "maxDepth": 25,
+      "source": "milestone"
+    },
+    {
+      "id": 6,
+      "sessionId": "abc-123",
       "timestamp": 2100,
       "wallTime": 1780000002000,
       "type": "scroll",
       "url": "/reports",
       "viewport": { "width": 1280, "height": 800 },
       "depth": 40,
-      "maxDepth": 40
+      "maxDepth": 40,
+      "source": "continuous"
     }
   ]
 }

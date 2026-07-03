@@ -25,7 +25,7 @@ describe('parseSessionImport', () => {
     const result = parseSessionImport(fixtureRaw);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.events).toHaveLength(5);
+      expect(result.events).toHaveLength(6);
       expect(result.sessionName).toBe('participant-01');
     }
   });
@@ -75,8 +75,9 @@ describe('prepareTimeline', () => {
       'click',
       'navigation',
       'scroll',
+      'scroll',
     ]);
-    expect(timeline.events[4]!.relativeTs).toBe(2000); // 2100 - 100
+    expect(timeline.events[5]!.relativeTs).toBe(2000); // 2100 - 100
     expect(timeline.duration).toBe(2000);
     expect(timeline.participantViewport).toEqual({ width: 1280, height: 800 });
     expect(timeline.warnings).toHaveLength(0);

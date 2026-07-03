@@ -139,6 +139,31 @@ describe('replay scheduler', () => {
     s.destroy();
   });
 
+  it('seek-state rebuild skips milestone scrolls in favour of the last continuous one', () => {
+    const tl = prepareTimeline([
+      ev('navigation', 0, { from: '', to: '/', method: 'pageload' }),
+      ev('scroll', 500, { depth: 30, maxDepth: 30, source: 'continuous' }),
+      ev('scroll', 800, { depth: 50, maxDepth: 50, source: 'milestone' }),
+    ]);
+    const seen: Array<{ depth?: number }> = [];
+    const s = createScheduler(
+      tl,
+      {
+        onEvent: () => undefined,
+        onTick: () => undefined,
+        onSeek: (_t, state) => {
+          seen.push(...state.filter((e) => e.type === 'scroll') as Array<{ depth?: number }>);
+        },
+        onEnd: () => undefined,
+      },
+      fakeTiming()
+    );
+    s.seek(1000); // past both scrolls — milestone at 800 must not shadow the continuous at 500
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.depth).toBe(30);
+    s.destroy();
+  });
+
   it('seek clamps to [0, duration]', () => {
     const timing = fakeTiming();
     const s = createScheduler(timeline, handlers, timing);

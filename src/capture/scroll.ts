@@ -34,7 +34,7 @@ function getScrollDepth(): number {
   return Math.min(100, Math.round((scrollTop / scrollable) * 100));
 }
 
-function emitScroll(depth: number): void {
+function emitScroll(depth: number, source: 'continuous' | 'milestone'): void {
   if (!_handler || isCaptureSuppressed()) return;
   _maxDepth = Math.max(_maxDepth, depth);
 
@@ -47,6 +47,7 @@ function emitScroll(depth: number): void {
     viewport: { width: window.innerWidth, height: window.innerHeight },
     depth,
     maxDepth: _maxDepth,
+    source,
   };
 
   try {
@@ -114,7 +115,7 @@ function setupObserver(): void {
         const pct = Number(entry.target.getAttribute('data-recap-sentinel'));
         if (!milestonesSeen.has(pct)) {
           milestonesSeen.add(pct);
-          emitScroll(pct);
+          emitScroll(pct, 'milestone');
         }
       }
     },
@@ -136,7 +137,7 @@ function startContinuousTracking(): void {
           const depth = getScrollDepth();
           if (depth > _maxDepth || Math.abs(depth - _lastLoggedDepth) >= INCREMENT_THRESHOLD) {
             _lastLoggedDepth = depth;
-            emitScroll(depth);
+            emitScroll(depth, 'continuous');
           }
         } catch (err) {
           console.error('[Recap] rAF scroll error:', err);

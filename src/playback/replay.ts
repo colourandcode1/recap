@@ -72,6 +72,11 @@ function applyNavigation(e: NavigationEvent): void {
 }
 
 function applyScroll(e: ScrollEvent): void {
+  // Milestone events mean "the X% mark entered the viewport", not "scrollTop
+  // was at X%" — sentinels visible at page load fire with zero scrolling.
+  // Replaying them as scroll positions made the page jump; skip them.
+  // (Legacy events without `source` keep the old behaviour.)
+  if (e.source === 'milestone') return;
   const docHeight = Math.max(
     document.body.scrollHeight,
     document.documentElement.scrollHeight
@@ -123,6 +128,12 @@ export function startReplay(events: AnyEvent[], schedulerOpts?: SchedulerOptions
 
   suppressCapture();
   initVisuals();
+  // Sessions start at the top of the page; the facilitator may not be there.
+  try {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  } catch {
+    // jsdom and some embedded contexts don't implement scrollTo
+  }
 
   const tickSubs: Array<(t: number) => void> = [];
   const endSubs: Array<() => void> = [];

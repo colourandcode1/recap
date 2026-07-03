@@ -38,6 +38,11 @@ export interface ScrollEvent extends BaseEvent {
   type: 'scroll';
   depth: number; // 0-100 percentage
   maxDepth: number; // highest reached this page load
+  // 'continuous' = scrollTop percentage (replayable as a scroll position).
+  // 'milestone' = "the X% mark entered the viewport" (analytics only — NOT a
+  // scroll position; sentinels in the first viewport fire with zero scrolling).
+  // Optional so pre-1.1 exports remain valid.
+  source?: 'continuous' | 'milestone';
 }
 
 export interface NavigationEvent extends BaseEvent {

@@ -96,7 +96,9 @@ export function createScheduler(
       if (e.type === 'navigation') {
         lastNav = e;
         lastScroll = null; // scroll position resets on navigation
-      } else if (e.type === 'scroll') {
+      } else if (e.type === 'scroll' && e.source !== 'milestone') {
+        // Milestone scrolls are analytics markers, not scroll positions —
+        // rebuilding seek state from one would jump the page.
         lastScroll = e;
       }
     }

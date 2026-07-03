@@ -18,6 +18,9 @@ describe('replay orchestrator', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     window.history.replaceState(null, '', '/');
+    // jsdom doesn't implement scrollTo — default mock keeps output clean;
+    // individual tests re-spy to assert calls.
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -73,10 +76,56 @@ describe('replay orchestrator', () => {
     Object.defineProperty(document.body, 'scrollHeight', { value: 3000, configurable: true });
 
     const session = startReplay(fixtureEvents);
-    session.seek(2000); // past the depth-40 scroll on /reports
+    session.seek(2000); // past the depth-40 continuous scroll on /reports
     expect(scrollToSpy).toHaveBeenCalledWith(
       expect.objectContaining({ top: expect.any(Number), behavior: 'auto' })
     );
+    session.stop();
+  });
+
+  it('scrolls to the top of the page when the replay starts', () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => undefined);
+    const session = startReplay(fixtureEvents);
+    expect(scrollToSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ top: 0, behavior: 'auto' })
+    );
+    session.stop();
+  });
+
+  it('does not apply milestone scroll events as scroll positions', () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => undefined);
+    Object.defineProperty(document.body, 'scrollHeight', { value: 3000, configurable: true });
+
+    const session = startReplay(fixtureEvents);
+    scrollToSpy.mockClear(); // discard the scroll-to-top on start
+    // Seek to just after the milestone (relativeTs 1200) but before the
+    // continuous scroll (relativeTs 2000): seek-state rebuild must NOT use it.
+    session.seek(1500);
+    expect(scrollToSpy).not.toHaveBeenCalled();
+    session.stop();
+  });
+
+  it('applies legacy scroll events without a source (old exports)', () => {
+    const scrollToSpy = vi
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => undefined);
+    Object.defineProperty(document.body, 'scrollHeight', { value: 3000, configurable: true });
+
+    const legacy = fixtureEvents.map((e) => {
+      if (e.type === 'scroll') {
+        const { source: _source, ...rest } = e as typeof e & { source?: string };
+        return rest;
+      }
+      return e;
+    });
+    const session = startReplay(legacy as typeof fixtureEvents);
+    scrollToSpy.mockClear();
+    session.seek(1500); // legacy event at 1200 has no source → still applied
+    expect(scrollToSpy).toHaveBeenCalled();
     session.stop();
   });
 
