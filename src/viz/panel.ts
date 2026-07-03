@@ -21,6 +21,8 @@ import { getSessionId, getSessionName } from '../capture/session.js';
 import { pauseClickCapture, resumeClickCapture } from '../capture/clicks.js';
 import { buildTimelineHTML, TIMELINE_STYLES } from './timeline-view.js';
 import { generateTimeline } from '../analysis/timeline.js';
+import { launchReplay } from '../playback/launch.js';
+import { parseSessionImport } from '../playback/import.js';
 
 const PREFIX = 'recap-panel';
 const PARTICIPANT_GUIDANCE_METRICS_KEY = 'recap-participant-guidance-metrics';
@@ -683,6 +685,19 @@ function render(
             : ''
         }
 
+        <div class="${PREFIX}-section">
+          <div class="${PREFIX}-label">Replay</div>
+          <div class="${PREFIX}-exports">
+            ${
+              sessions.length > 0
+                ? `<button class="${PREFIX}-btn primary" id="${PREFIX}-btn-replay">▶ Replay session</button>`
+                : ''
+            }
+            <button class="${PREFIX}-btn" id="${PREFIX}-btn-import-replay">📂 Import JSON…</button>
+          </div>
+          <input type="file" id="${PREFIX}-replay-file" accept="application/json,.json" style="display:none" />
+        </div>
+
         <div class="${PREFIX}-tabs">
           <button class="${PREFIX}-tab ${_activeTab === 'heatmap' ? 'active' : ''}" data-tab="heatmap">Overview</button>
           <button class="${PREFIX}-tab ${_activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">Timeline</button>
@@ -767,6 +782,47 @@ function bindEvents(root: HTMLDivElement): void {
 
   root.querySelector<HTMLButtonElement>(`#${PREFIX}-btn-docs-link`)?.addEventListener('click', () => {
     openDocsSite();
+  });
+
+  // Replay current session
+  root.querySelector<HTMLButtonElement>(`#${PREFIX}-btn-replay`)?.addEventListener('click', () => {
+    if (_allEvents.length === 0) {
+      showToast('No events in this session to replay.', 2500, 'error');
+      return;
+    }
+    try {
+      closePanel();
+      launchReplay(_allEvents);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Replay failed to start.', 3000, 'error');
+    }
+  });
+
+  // Import a session JSON export and replay it
+  const replayFileInput = root.querySelector<HTMLInputElement>(`#${PREFIX}-replay-file`);
+  root
+    .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-import-replay`)
+    ?.addEventListener('click', () => replayFileInput?.click());
+  replayFileInput?.addEventListener('change', () => {
+    const file = replayFileInput.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      replayFileInput.value = ''; // allow re-importing the same file
+      const result = parseSessionImport(String(reader.result ?? ''));
+      if (!result.ok) {
+        showToast(result.error, 3000, 'error');
+        return;
+      }
+      try {
+        closePanel();
+        launchReplay(result.events);
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Replay failed to start.', 3000, 'error');
+      }
+    };
+    reader.onerror = () => showToast('Could not read the selected file.', 3000, 'error');
+    reader.readAsText(file);
   });
 
   // Tab switching

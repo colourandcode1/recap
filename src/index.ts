@@ -2,17 +2,20 @@
 // Auto-initializes from <script> tag data-* attributes.
 
 import type { RecapConfig, AnyEvent } from './types.js';
-import { getSessionId, setSessionName } from './capture/session.js';
+import { getSessionId, getSessionName, setSessionName } from './capture/session.js';
 import { initClickCapture } from './capture/clicks.js';
 import { initScrollCapture, refreshScrollCapture } from './capture/scroll.js';
 import { initNavigationCapture } from './capture/navigation.js';
 import { initMoveCapture, flushMoveBatch } from './capture/moves.js';
 import { initBuffer, flush, push, getBuffer } from './storage/buffer.js';
-import { saveEvents, purgeOldSessions } from './storage/idb.js';
+import { saveEvents, purgeOldSessions, getSessionEvents } from './storage/idb.js';
 import { setEndpoint, sendBeaconBatch, hasEndpoint } from './storage/beacon.js';
 import { openPanel, closePanel, isPanelOpen } from './viz/panel.js';
 import { summarize } from './analysis/summarize.js';
 import { exportJSON, exportCSV, exportSummaryJSON } from './storage/export.js';
+import { launchReplay } from './playback/launch.js';
+import { stopReplay, isReplaying } from './playback/replay.js';
+import type { ReplaySession } from './playback/replay.js';
 
 // --- State ---
 
@@ -117,23 +120,50 @@ export const Recap = {
     closePanel();
   },
 
-  /** Export current session as JSON. */
-  exportJSON(): void {
-    const events = getBuffer();
-    exportJSON(events);
+  /** Export current session as JSON (full session — flushes, then reads IndexedDB). */
+  async exportJSON(): Promise<void> {
+    const events = await getFullSessionEvents();
+    exportJSON(events, getSessionName() ?? undefined);
   },
 
-  /** Export current session as CSV. */
-  exportCSV(): void {
-    const events = getBuffer();
-    exportCSV(events);
+  /** Export current session as CSV (full session — flushes, then reads IndexedDB). */
+  async exportCSV(): Promise<void> {
+    const events = await getFullSessionEvents();
+    exportCSV(events, getSessionName() ?? undefined);
   },
 
-  /** Export AI summary. */
-  exportAI(): void {
-    const events = getBuffer();
+  /** Export AI summary (full session — flushes, then reads IndexedDB). */
+  async exportAI(): Promise<void> {
+    const events = await getFullSessionEvents();
     const summary = summarize(events);
-    exportSummaryJSON(summary);
+    exportSummaryJSON(summary, getSessionName() ?? undefined);
+  },
+
+  /**
+   * Replay a session on top of the live prototype.
+   * Pass a sessionId (loads from IndexedDB) or a parsed session export
+   * (`{ events: [...] }`). Capture is suppressed for the replay's lifetime.
+   */
+  async replaySession(source: string | { events: AnyEvent[] }): Promise<ReplaySession> {
+    let events: AnyEvent[];
+    if (typeof source === 'string') {
+      await flush();
+      events = await getSessionEvents(source);
+    } else {
+      events = source.events;
+    }
+    closePanel();
+    return launchReplay(events);
+  },
+
+  /** Stop the active replay (no-op when none is running). */
+  stopReplay(): void {
+    stopReplay();
+  },
+
+  /** True while a replay is active. */
+  isReplaying(): boolean {
+    return isReplaying();
   },
 
   /** Tear down all listeners and clean up. */
@@ -143,6 +173,25 @@ export const Recap = {
     _initialized = false;
   },
 };
+
+// --- Export helpers ---
+
+/**
+ * Full-session events for export: flush the buffer, then read the persisted
+ * session from IndexedDB (falling back to the live buffer if IDB is empty or
+ * unavailable). Exports must be complete, replayable sessions — the buffer
+ * alone only holds the last few unflushed events.
+ */
+async function getFullSessionEvents(): Promise<AnyEvent[]> {
+  try {
+    await flush();
+    const events = await getSessionEvents(getSessionId());
+    if (events.length > 0) return events;
+  } catch (err) {
+    console.error('[Recap] Full-session read failed, exporting buffer only:', err);
+  }
+  return getBuffer();
+}
 
 // --- Keyboard shortcut matching ---
 
