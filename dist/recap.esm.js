@@ -186,17 +186,17 @@ function extractDataAttributes(el) {
 }
 let _handler$2 = null;
 let _stripQuery$2 = true;
-let _paused = false;
+let _paused$2 = false;
 function pauseClickCapture() {
-  _paused = true;
+  _paused$2 = true;
 }
 function resumeClickCapture() {
-  _paused = false;
+  _paused$2 = false;
 }
 function onDocumentClick(e) {
   try {
     const target = e.target;
-    if (!target || !_handler$2 || _paused) return;
+    if (!target || !_handler$2 || _paused$2) return;
     if (isExcluded(target)) return;
     const tag = target.tagName.toUpperCase();
     const viewport = {
@@ -255,6 +255,13 @@ let _observer = null;
 let _rafId = null;
 let _resizeDebounceTimer = null;
 let _cleanupFns$1 = [];
+let _paused$1 = false;
+function pauseScrollCapture() {
+  _paused$1 = true;
+}
+function resumeScrollCapture() {
+  _paused$1 = false;
+}
 function getScrollDepth() {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   const docHeight = Math.max(
@@ -269,7 +276,7 @@ function getScrollDepth() {
   return Math.min(100, Math.round(scrollTop / scrollable * 100));
 }
 function emitScroll(depth) {
-  if (!_handler$1) return;
+  if (!_handler$1 || _paused$1) return;
   _maxDepth = Math.max(_maxDepth, depth);
   const event = {
     sessionId: getSessionId(),
@@ -425,10 +432,17 @@ let _handler = null;
 let _stripQuery = true;
 let _currentUrl = "";
 let _cleanupFns = [];
+let _paused = false;
+function pauseNavigationCapture() {
+  _paused = true;
+}
+function resumeNavigationCapture() {
+  _paused = false;
+}
 const _originalPushState = history.pushState.bind(history);
 const _originalReplaceState = history.replaceState.bind(history);
 function emit(from, to, method) {
-  if (!_handler) return;
+  if (!_handler || _paused) return;
   try {
     const event = {
       sessionId: getSessionId(),
@@ -2456,6 +2470,8 @@ async function openPanel() {
     _panelRoot.style.display = "flex";
     if (_activeTab === "heatmap") syncPanelMinHeight(_panelRoot);
     pauseClickCapture();
+    pauseNavigationCapture();
+    pauseScrollCapture();
     return;
   }
   injectStyles();
@@ -2482,6 +2498,8 @@ async function openPanel() {
   document.addEventListener("click", handleOutsideClickForFormatsMenu);
   makeDraggable(_panelRoot);
   pauseClickCapture();
+  pauseNavigationCapture();
+  pauseScrollCapture();
 }
 function render(root, sessions) {
   const stats = getStats(_allEvents);
@@ -2808,6 +2826,8 @@ function closePanel() {
   hideHeatmap();
   hideScrollDepthOverlay();
   resumeClickCapture();
+  resumeNavigationCapture();
+  resumeScrollCapture();
 }
 function isPanelOpen() {
   return _panelRoot !== null && _panelRoot.style.display !== "none";
