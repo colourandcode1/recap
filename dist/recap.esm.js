@@ -1661,12 +1661,12 @@ function generateTimeline(events, isCurrentSession = false) {
 }
 const PREFIX$1 = "recap-panel";
 const TAG_CONFIG = {
-  backtrack: { bg: "#7a4a1a", color: "#fbbf6a" },
-  "first task": { bg: "#3a3a4a", color: "#a0a0b8" },
-  "end of session": { bg: "#3a3a4a", color: "#a0a0b8" },
-  abandoned: { bg: "#7a1a1a", color: "#fca5a5" },
-  "long pause": { bg: "#3a3a4a", color: "#a0a0b8" },
-  "brief visit": { bg: "#3a3a4a", color: "#a0a0b8" }
+  backtrack: { bg: "#451a03", color: "#fdba74" },
+  "first task": { bg: "#27272a", color: "#a1a1aa" },
+  "end of session": { bg: "#27272a", color: "#a1a1aa" },
+  abandoned: { bg: "#450a0a", color: "#fca5a5" },
+  "long pause": { bg: "#27272a", color: "#a1a1aa" },
+  "brief visit": { bg: "#27272a", color: "#a1a1aa" }
 };
 function formatArrival(seconds) {
   const m = Math.floor(seconds / 60);
@@ -1681,24 +1681,24 @@ function formatDuration$1(seconds) {
 }
 function renderTag(tag) {
   const { bg, color } = TAG_CONFIG[tag];
-  return `<span style="background:${bg};color:${color};font-size:10px;padding:2px 6px;border-radius:3px;margin-left:4px;white-space:nowrap">${tag}</span>`;
+  return `<span style="background:${bg};color:${color};font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:4px;white-space:nowrap">${tag}</span>`;
 }
 function renderRow(visit, index) {
-  const visitMeta = visit.isRevisit ? `<span style="color:#718096;font-size:11px;margin-left:6px">(visit ${visit.visitNumber})</span>` : "";
+  const visitMeta = visit.isRevisit ? `<span style="color:var(--muted-foreground);font-size:11px;margin-left:6px">(visit ${visit.visitNumber})</span>` : "";
   const tags = visit.tags.map(renderTag).join("");
-  const durationStyle = visit.duration === null ? "color:#718096;font-style:italic" : "color:#a0aec0";
+  const durationStyle = visit.duration === null ? "color:var(--muted-foreground);font-style:italic" : "color:var(--muted-foreground)";
   return `
     <div
       data-visit-index="${index}"
       style="
         display:flex;align-items:center;gap:8px;
-        padding:7px 0;border-bottom:1px solid #2a2a3e;
+        padding:7px 0;border-bottom:1px solid var(--border);
         cursor:pointer;transition:background 0.1s;
       "
       class="${PREFIX$1}-tl-row"
     >
-      <span style="font-family:monospace;font-size:11px;color:#718096;min-width:36px;flex-shrink:0">${formatArrival(visit.arrivalTime)}</span>
-      <span style="font-size:12px;color:#e2e8f0;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${visit.pagePath}</span>
+      <span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted-foreground);min-width:36px;flex-shrink:0">${formatArrival(visit.arrivalTime)}</span>
+      <span style="font-size:12px;color:var(--foreground);font-family:ui-monospace,monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${visit.pagePath}</span>
       ${visitMeta}
       <span style="font-size:11px;${durationStyle};flex-shrink:0;min-width:72px;text-align:right">${formatDuration$1(visit.duration)}</span>
       <span style="display:flex;flex-wrap:wrap;gap:2px;flex-shrink:0">${tags}</span>
@@ -1728,7 +1728,7 @@ function buildTimelineHTML(events, sessionId) {
   if (!hasMultiplePages) {
     const row = renderRow(visits[0], 0);
     return `
-      <div style="color:#718096;font-size:11px;margin-bottom:8px">
+      <div style="color:var(--muted-foreground);font-size:11px;margin-bottom:8px">
         This session stayed on a single page. No navigation flow to show.
       </div>
       <div>${row}</div>
@@ -1738,75 +1738,124 @@ function buildTimelineHTML(events, sessionId) {
 }
 const TIMELINE_STYLES = `
   .${PREFIX$1}-tl-row:hover {
-    background: #2a2a3e !important;
+    background: var(--accent) !important;
   }
   .${PREFIX$1}-filter-bar {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 6px 8px;
-    background: #1a2a3e;
-    border: 1px solid #2b6cb0;
-    border-radius: 4px;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
     font-size: 11px;
-    color: #bee3f8;
+    color: var(--foreground);
     margin-bottom: 10px;
   }
   .${PREFIX$1}-filter-bar strong {
-    color: #90cdf4;
+    color: var(--foreground);
+    font-weight: 600;
   }
   .${PREFIX$1}-filter-clear {
     background: none;
     border: none;
-    color: #90cdf4;
+    color: var(--muted-foreground);
     cursor: pointer;
     font-size: 11px;
-    font-family: system-ui, sans-serif;
+    font-family: inherit;
     padding: 0;
     margin-left: auto;
   }
-  .${PREFIX$1}-filter-clear:hover { color: #fff; }
+  .${PREFIX$1}-filter-clear:hover { color: var(--foreground); }
   .${PREFIX$1}-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid #2d3748;
+    display: inline-flex;
+    gap: 2px;
+    background: var(--muted);
+    border-radius: calc(var(--radius) - 2px);
+    padding: 3px;
     margin-bottom: 12px;
     flex-shrink: 0;
   }
   .${PREFIX$1}-tab {
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    color: #718096;
+    border-radius: calc(var(--radius) - 4px);
+    color: var(--muted-foreground);
     cursor: pointer;
     font-size: 12px;
-    font-family: system-ui, sans-serif;
-    padding: 8px 14px;
-    transition: color 0.15s, border-color 0.15s;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 5px 12px;
+    transition: color 0.15s, background 0.15s, box-shadow 0.15s;
   }
-  .${PREFIX$1}-tab:hover { color: #e2e8f0; }
+  .${PREFIX$1}-tab:hover { color: var(--foreground); }
   .${PREFIX$1}-tab.active {
-    color: #06b6d4;
-    border-bottom-color: #06b6d4;
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
 `;
 const PREFIX = "recap-panel";
 const PARTICIPANT_GUIDANCE_METRICS_KEY = "recap-participant-guidance-metrics";
 const PARTICIPANT_GUIDANCE_EVENT = "recap:participant-guidance";
 const RECAP_DOCS_URL = "https://www.recap-ux.com";
+function icon(inner, size = 14) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${inner}</svg>`;
+}
+const LOGO_MARK = '<svg width="19" height="14" viewBox="0 0 553 412" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><path d="M377.308 0C396.68 0.910718 414.26 12.1299 415.985 32.666C421.213 34.5745 426.418 36.554 431.593 38.6035C493.873 63.7061 551.885 107.778 552.838 178.872C553.295 213.012 551.121 245.224 538.806 277.2C531.283 296.73 530.067 297.489 515 288.96C452.578 418.999 359.961 408.617 312 411.755C194.8 414.265 143.848 330.937 133.022 288.96C130.981 280.879 129.924 273.963 128.901 265.731C92.7627 270.145 46.447 275.333 13.5049 255.288C1.36792 248.719 -5.13094 228.633 4.99609 217.696C32.0178 188.514 96.8497 180.197 133.742 173.844C142.342 108.846 156.165 50.1965 224.542 28.0488C266.825 14.3528 303.396 13.513 347.038 17.8535C354.013 5.01192 363.2 1.19355 377.308 0ZM192.943 188.5C185.974 187.975 168.93 187.19 162.053 187.588C123.728 188.854 45.4069 201.754 16.6279 229.871C50.4724 210.857 83.4688 209.719 120.924 219.89C155.099 229.169 185.628 247.37 219.761 257.542C262.193 270.189 312.052 265.911 353.301 250.463C355.971 249.461 355.393 245.995 355.235 243.704C356.36 242.163 356.068 242.188 358.093 241.821C370.063 239.654 391.16 257.565 393.688 268.219L393.103 269.459C387.485 270.856 378.545 262.965 370.558 260.824C362.645 292.773 351.358 326.252 321.118 344.306C305.423 353.825 286.55 356.6 268.781 352.002C229.061 341.712 209.45 307.505 202.637 269.842C186.726 263.507 169.913 255.381 154.3 249.531C151.155 248.373 151.718 247.971 149.474 248.948C146.326 255.448 153.142 284.754 155.785 292.829C191.61 402.308 382.287 431.746 436.138 322.952C446.24 302.548 449.015 278.467 448.04 255.546C359.383 224.819 306.425 194.588 209.908 189.131C203.146 196.264 199.252 207.682 208.772 214.622C219.859 222.703 233.813 222.136 246.688 224.149C248.665 224.46 248.747 225.389 248.942 226.592C245.316 230.153 233.641 231.138 228.766 230.865C198.608 229.179 185.324 217.664 192.943 188.5ZM338.548 300.407C330.875 297.508 319.468 295.204 311.401 297.029C290.141 299.816 269.065 310.506 256.683 328.462C265.149 333.975 273.784 337.67 284.067 338.108C310.19 338.409 326.788 322.351 338.548 300.407ZM531.11 190.242C528.688 168.658 509.3 153.075 487.708 155.349C465.898 157.645 450.133 177.264 452.578 199.06C455.023 220.855 474.748 236.49 496.521 233.893C518.083 231.321 533.533 211.826 531.11 190.242ZM408.208 48.6328C443.405 104.014 433.295 165.888 414.396 225.594C417.021 226.77 421.461 229.028 424.146 229.062C440.503 183.208 450.598 115.261 428.953 69.3672C426.553 64.2855 422.788 57.5425 419.945 52.6221C416.285 51.3033 411.898 49.5826 408.208 48.6328ZM390.575 43.0283C362.495 35.3142 316.28 28.4624 287.313 32.2598C256.152 34.9567 209.054 43.8138 187.929 69.6943C165.966 96.6012 158.262 138.937 155.745 172.739L187.137 173.171C185.874 164.665 183.88 148.696 188.232 140.857C192.934 132.389 217.018 144.512 216.8 132.676C211.769 125.298 190.635 125.236 192.468 116.397C196.456 97.1606 227.823 62.4465 243.87 91.2529C256.439 113.818 245.873 153.527 237.753 177.856C258.112 180.583 272.956 183.649 292.843 187.891C291.155 178.566 288.315 161.568 292.271 152.895C293.964 151.445 294.112 151.511 296.442 151.375C301.756 151.281 319.804 150.682 323.54 148.646C324.875 146.377 324.56 147.378 324.485 144.66C320.09 136.794 295.089 135.728 298.549 126.302C305.18 108.9 321.245 84.666 343.003 90.4326C349.01 92.0245 356.053 98.4983 358.355 104.133C371.255 135.679 359.39 174.157 345.545 202.723C365 208.975 384.411 215.393 403.761 221.976C419.121 177.536 430.055 115.22 409.062 70.5703C404.27 60.3792 397.738 51.6396 390.575 43.0283ZM492.875 174.325C495.132 177.596 492.59 188.038 491.975 192.742C496.355 189.855 511.91 178.962 516.013 179.036C517.482 184.222 514.108 213.973 511.58 218.519C508.138 218.017 503.397 211.334 500.944 208.396C497.974 204.528 494.645 200.865 491.412 197.205C490.46 203.342 489.642 209.147 488.135 215.186C483.035 210.316 470.998 195.563 467 189.644C473.142 184.321 484.654 177.992 491.802 174L492.875 174.325Z" fill="currentColor"/></svg>';
+const ICONS = {
+  close: icon('<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>', 15),
+  flame: icon(
+    '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
+  ),
+  scrollDepth: icon(
+    '<line x1="12" y1="3" x2="12" y2="21"/><polyline points="7 8 12 3 17 8"/><polyline points="7 16 12 21 17 16"/>'
+  ),
+  sparkles: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></svg>',
+  image: icon(
+    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'
+  ),
+  route: icon('<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7c0 6 8 4 8 8"/>'),
+  chevronDown: icon('<polyline points="6 9 12 15 18 9"/>', 12)
+};
 const STYLES = `
   .${PREFIX}-root {
+    --background: #09090b;
+    --foreground: #fafafa;
+    --card: #18181b;
+    --card-foreground: #fafafa;
+    --popover: #18181b;
+    --popover-foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-hover: #e4e4e7;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #3f3f46;
+    --accent-foreground: #fafafa;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #fef2f2;
+    --destructive-accent: #f87171;
+    --success-accent: #4ade80;
+    --border: #27272a;
+    --input: #3f3f46;
+    --ring: #71717a;
+    --radius: 0.5rem;
+
     position: fixed;
     bottom: 20px;
     right: 20px;
     width: 320px;
     max-height: 70vh;
-    background: #1a1a2e;
-    color: #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    background: var(--background);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
     z-index: 10000;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 13px;
     line-height: 1.5;
     overflow: hidden;
@@ -1818,30 +1867,50 @@ const STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
-    background: #16213e;
-    border-bottom: 1px solid #2d3748;
+    padding: 12px 16px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
     cursor: move;
     flex-shrink: 0;
   }
   .${PREFIX}-title {
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
     font-size: 14px;
-    color: #4299e1;
-    letter-spacing: 0.05em;
+    color: var(--foreground);
+    letter-spacing: -0.01em;
+  }
+  .${PREFIX}-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: calc(var(--radius) - 3px);
+    /* Fixed white/black regardless of theme — this is the brand mark, not a themed icon. */
+    background: #fff;
+    color: #000;
   }
   .${PREFIX}-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     background: none;
     border: none;
-    color: #a0aec0;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
     cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0 4px;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
   }
-  .${PREFIX}-close:hover { color: #fff; }
+  .${PREFIX}-close:hover { background: var(--accent); color: var(--foreground); }
+  .${PREFIX}-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-body {
-    padding: 12px 14px;
+    padding: 14px 16px;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -1872,12 +1941,12 @@ const STYLES = `
     justify-content: center;
     align-items: center;
     gap: 6px;
-    color: #718096;
+    color: var(--muted-foreground);
     text-align: center;
     padding: 10px 16px;
   }
   .${PREFIX}-timeline-empty-title {
-    color: #a0aec0;
+    color: var(--foreground);
     font-size: 12px;
     font-weight: 600;
   }
@@ -1885,14 +1954,15 @@ const STYLES = `
     font-size: 11px;
   }
   .${PREFIX}-section {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .${PREFIX}-label {
     font-size: 10px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #718096;
-    margin-bottom: 6px;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    margin-bottom: 8px;
   }
   .${PREFIX}-label-row {
     display: flex;
@@ -1914,9 +1984,9 @@ const STYLES = `
     width: 18px;
     height: 18px;
     border-radius: 999px;
-    border: 1px solid #4a5568;
-    background: #2d3748;
-    color: #a0aec0;
+    border: 1px solid var(--border);
+    background: var(--secondary);
+    color: var(--muted-foreground);
     font-size: 11px;
     line-height: 1;
     display: inline-flex;
@@ -1924,25 +1994,28 @@ const STYLES = `
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .${PREFIX}-help-btn:hover,
   .${PREFIX}-help-btn:focus-visible {
-    background: #3a4a6b;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--accent);
+    border-color: var(--ring);
+    color: var(--foreground);
   }
+  .${PREFIX}-help-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-hint-tooltip {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     width: 250px;
-    background: #0f172a;
-    border: 1px solid #2d4a74;
-    border-radius: 6px;
+    background: var(--popover);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
     padding: 8px 10px;
     font-size: 11px;
-    color: #dbeafe;
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -4px rgba(0,0,0,0.4), 0 10px 15px -3px rgba(0,0,0,0.4);
     z-index: 2;
   }
   .${PREFIX}-label-with-help:hover .${PREFIX}-hint-tooltip,
@@ -1958,62 +2031,86 @@ const STYLES = `
   .${PREFIX}-inline-link {
     border: none;
     background: none;
-    color: #63b3ed;
+    color: var(--muted-foreground);
     font-size: 11px;
     padding: 0;
     cursor: pointer;
     text-decoration: underline;
-    font-family: system-ui, sans-serif;
+    text-underline-offset: 2px;
+    font-family: inherit;
   }
-  .${PREFIX}-inline-link:hover { color: #90cdf4; }
+  .${PREFIX}-inline-link:hover { color: var(--foreground); }
   .${PREFIX}-docs-link-btn {
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    background: #2d3748;
-    color: #bee3f8;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: var(--foreground);
     font-size: 11px;
     line-height: 1;
     padding: 4px 8px;
     cursor: pointer;
-    font-family: system-ui, sans-serif;
+    font-family: inherit;
     white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
   }
   .${PREFIX}-docs-link-btn:hover,
   .${PREFIX}-docs-link-btn:focus-visible {
-    background: #3a4a6b;
-    border-color: #4299e1;
-    color: #e2e8f0;
+    background: var(--accent);
+    border-color: var(--ring);
   }
+  .${PREFIX}-docs-link-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-select {
     width: 100%;
-    background: #2d3748;
-    color: #e2e8f0;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    padding: 5px 8px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--background);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px 14px;
+    color: var(--foreground);
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    padding: 6px 28px 6px 10px;
     font-size: 12px;
   }
+  .${PREFIX}-select:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    overflow: hidden;
   }
   .${PREFIX}-stat {
-    background: #2d3748;
-    border-radius: 4px;
-    padding: 6px 8px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 4px;
     text-align: center;
+    border-right: 1px solid var(--border);
   }
+  .${PREFIX}-stat:last-child { border-right: none; }
   .${PREFIX}-stat-value {
-    font-size: 18px;
+    width: 100%;
+    font-size: 15px;
     font-weight: 700;
-    color: #4299e1;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .${PREFIX}-stat-key {
     font-size: 10px;
-    color: #718096;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
   }
   .${PREFIX}-toggles {
     display: flex;
@@ -2021,108 +2118,199 @@ const STYLES = `
   }
   .${PREFIX}-toggle {
     flex: 1;
-    padding: 7px 6px;
-    background: #2d3748;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    color: #a0aec0;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 8px;
+    background: transparent;
+    border: 1.5px solid var(--input);
+    border-radius: var(--radius);
+    color: var(--muted-foreground);
     cursor: pointer;
-    font-size: 11px;
-    font-family: system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
     text-align: center;
     transition: all 0.15s;
   }
-  .${PREFIX}-toggle:hover { background: #3a4a6b; color: #e2e8f0; }
+  .${PREFIX}-toggle svg { width: 22px; height: 22px; }
+  .${PREFIX}-toggle:hover { background: var(--accent); color: var(--foreground); }
+  .${PREFIX}-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-toggle.active {
-    background: #2b6cb0;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
   }
-  .${PREFIX}-flow {
-    background: #0f0f23;
-    border-radius: 4px;
-    padding: 8px;
-    max-height: 120px;
-    overflow-y: auto;
+  .${PREFIX}-export-primary {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--primary);
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--primary-foreground);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .${PREFIX}-export-primary svg { width: 16px; height: 16px; }
+  .${PREFIX}-export-primary:hover { background: var(--primary-hover); }
+  .${PREFIX}-export-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
+  .${PREFIX}-more-formats-wrap {
+    position: relative;
+    margin-top: 8px;
+  }
+  .${PREFIX}-more-formats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--muted-foreground);
     font-size: 11px;
-    color: #a0aec0;
-  }
-  .${PREFIX}-flow-item {
+    font-weight: 500;
+    font-family: inherit;
     padding: 2px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    cursor: pointer;
   }
-  .${PREFIX}-flow-arrow {
-    color: #4299e1;
-    margin: 0 4px;
+  .${PREFIX}-more-formats:hover { color: var(--foreground); }
+  .${PREFIX}-more-formats svg { transition: transform 0.15s; }
+  .${PREFIX}-more-formats.expanded svg { transform: rotate(180deg); }
+  .${PREFIX}-formats-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
+    padding: 4px;
+    z-index: 5;
   }
+  .${PREFIX}-formats-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    border-radius: calc(var(--radius) - 4px);
+    color: var(--popover-foreground);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .${PREFIX}-formats-menu-item:hover,
+  .${PREFIX}-formats-menu-item:focus-visible { background: var(--accent); outline: none; }
   .${PREFIX}-exports {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
   .${PREFIX}-btn {
-    padding: 7px 4px;
-    background: #2d3748;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    color: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 4px;
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    color: var(--secondary-foreground);
     cursor: pointer;
-    font-size: 10px;
-    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: inherit;
     text-align: center;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .${PREFIX}-btn:hover { background: #3a4a6b; }
+  .${PREFIX}-btn:hover { background: var(--accent); }
+  .${PREFIX}-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-btn.primary {
-    background: #2b6cb0;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: none;
   }
-  .${PREFIX}-btn.primary:hover { background: #2c5282; }
+  .${PREFIX}-btn.primary:hover { background: var(--primary-hover); }
   .${PREFIX}-btn.danger {
-    background: #742a2a;
-    border-color: #fc8181;
-    color: #fed7d7;
+    background: var(--destructive);
+    border-color: var(--destructive);
+    color: var(--destructive-foreground);
+    box-shadow: none;
   }
-  .${PREFIX}-btn.danger:hover { background: #9b2c2c; }
+  .${PREFIX}-btn.danger:hover { background: #991b1b; }
   .${PREFIX}-footer {
     padding: 8px 14px;
-    border-top: 1px solid #2d3748;
+    border-top: 1px solid var(--border);
     text-align: center;
     flex-shrink: 0;
   }
   .${PREFIX}-clear-link {
     background: none;
     border: none;
-    color: #718096;
+    color: var(--muted-foreground);
     font-size: 11px;
     cursor: pointer;
     text-decoration: underline;
-    font-family: system-ui, sans-serif;
+    text-underline-offset: 2px;
+    font-family: inherit;
   }
-  .${PREFIX}-clear-link:hover { color: #fc8181; }
+  .${PREFIX}-clear-link:hover { color: var(--destructive-accent); }
   .${PREFIX}-toast {
+    /* Note: rendered as a direct child of <body>, not \`.${PREFIX}-root\`,
+       so it can't inherit that element's CSS variables — values here are
+       literal, matching the same zinc/dark palette. */
     position: fixed;
     bottom: 80px;
     right: 20px;
-    background: #276749;
-    color: #c6f6d5;
+    background: #18181b;
+    color: #fafafa;
+    border: 1px solid #27272a;
+    border-left: 3px solid #4ade80;
     padding: 8px 14px;
     border-radius: 6px;
     font-size: 12px;
-    font-family: system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
     z-index: 10001;
     animation: ${PREFIX}-fadein 0.2s ease;
   }
   .${PREFIX}-toast.${PREFIX}-toast-error {
-    background: #742a2a;
-    color: #fed7d7;
+    border-left-color: #f87171;
+    color: #f87171;
   }
   @keyframes ${PREFIX}-fadein {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  @media (max-width: 480px) {
+    .${PREFIX}-root {
+      width: calc(100vw - 24px);
+      right: 12px;
+      bottom: 12px;
+      max-height: 80vh;
+    }
+    .${PREFIX}-toast {
+      right: 12px;
+    }
   }
 `;
 let _panelRoot = null;
@@ -2135,6 +2323,7 @@ let _heatmapFilter = null;
 let _origPushState = null;
 let _hasTrackedTooltipOpened = false;
 let _preferredPanelMinHeight = 0;
+let _moreFormatsExpanded = false;
 function readStorage(key) {
   try {
     return localStorage.getItem(key);
@@ -2194,6 +2383,14 @@ function handleUrlChange() {
   if (isScrollDepthVisible()) updateScrollDepthOverlay(getScrolls(_allEvents));
   render(_panelRoot, _sessions);
 }
+function handleOutsideClickForFormatsMenu(e) {
+  if (!_moreFormatsExpanded || !_panelRoot) return;
+  const wrap = _panelRoot.querySelector(`.${PREFIX}-more-formats-wrap`);
+  if (wrap && !wrap.contains(e.target)) {
+    _moreFormatsExpanded = false;
+    render(_panelRoot, _sessions);
+  }
+}
 function injectStyles() {
   if (_styleEl) return;
   _styleEl = document.createElement("style");
@@ -2230,20 +2427,6 @@ function getScrolls(events) {
 }
 function getNavs(events) {
   return events.filter((e) => e.type === "navigation");
-}
-function buildNavFlowHTML(events) {
-  const navs = getNavs(events).filter((n) => n.to);
-  if (navs.length === 0) return '<div style="color:#718096;font-style:italic">No navigation recorded</div>';
-  const path = navs.map((n) => n.to);
-  let html = "";
-  for (let i = 0; i < path.length; i++) {
-    const url = path[i];
-    html += `<div class="${PREFIX}-flow-item">`;
-    if (i > 0) html += `<span class="${PREFIX}-flow-arrow">→</span>`;
-    html += `<span title="${url}">${url}</span>`;
-    html += "</div>";
-  }
-  return html;
 }
 function getStats(events) {
   const navs = getNavs(events);
@@ -2296,6 +2479,7 @@ async function openPanel() {
     handleUrlChange();
   };
   window.addEventListener("popstate", handleUrlChange);
+  document.addEventListener("click", handleOutsideClickForFormatsMenu);
   makeDraggable(_panelRoot);
   pauseClickCapture();
 }
@@ -2313,7 +2497,20 @@ function render(root, sessions) {
   const heatmapTabContent = `
     ${filterBar}
     <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Stats</div>
+      <div class="${PREFIX}-label">View</div>
+      <div class="${PREFIX}-toggles">
+        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? "active" : ""}" id="${PREFIX}-toggle-heatmap">
+          ${ICONS.flame}
+          <span>Heatmap</span>
+        </button>
+        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? "active" : ""}" id="${PREFIX}-toggle-scroll">
+          ${ICONS.scrollDepth}
+          <span>Scroll Depth</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section" style="margin-bottom:0;">
       <div class="${PREFIX}-stats">
         <div class="${PREFIX}-stat">
           <div class="${PREFIX}-stat-value">${stats.clicks}</div>
@@ -2329,26 +2526,9 @@ function render(root, sessions) {
         </div>
         <div class="${PREFIX}-stat">
           <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
-          <div class="${PREFIX}-stat-key">Max Scroll</div>
+          <div class="${PREFIX}-stat-key">Scroll</div>
         </div>
       </div>
-    </div>
-
-    <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Overlays</div>
-      <div class="${PREFIX}-toggles">
-        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? "active" : ""}" id="${PREFIX}-toggle-heatmap">
-          🔥 Heatmap
-        </button>
-        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? "active" : ""}" id="${PREFIX}-toggle-scroll">
-          📏 Scroll Depth
-        </button>
-      </div>
-    </div>
-
-    <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Navigation Flow</div>
-      <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
     </div>
   `;
   const timelineTabContent = `
@@ -2358,8 +2538,8 @@ function render(root, sessions) {
   `;
   root.innerHTML = `
     <div class="${PREFIX}-header">
-      <span class="${PREFIX}-title">⚡ Recap</span>
-      <button class="${PREFIX}-close" aria-label="Close panel">×</button>
+      <span class="${PREFIX}-title"><span class="${PREFIX}-title-icon">${LOGO_MARK}</span>Recap</span>
+      <button class="${PREFIX}-close" aria-label="Close panel">${ICONS.close}</button>
     </div>
     <div class="${PREFIX}-body">
       <div class="${PREFIX}-content-scroll">
@@ -2404,13 +2584,21 @@ function render(root, sessions) {
 
       <div class="${PREFIX}-section" style="margin-top:12px;margin-bottom:0;">
         <div class="${PREFIX}-label">Export</div>
+        <button class="${PREFIX}-export-primary" id="${PREFIX}-btn-ai">${ICONS.sparkles}<span>Export for AI</span></button>
         <div class="${PREFIX}-exports">
-          <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-screenshot">📸 Screenshot</button>
-          <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-ai">🤖 Export AI</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-json">📄 Raw JSON</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-csv">📊 CSV</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-heatmap-png">🖼 Heatmap PNG</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-flow">🗺 Flow SVG</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-screenshot">Screenshot</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-json">Raw JSON</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-csv">CSV</button>
+        </div>
+        <div class="${PREFIX}-more-formats-wrap">
+          <button class="${PREFIX}-more-formats ${_moreFormatsExpanded ? "expanded" : ""}" id="${PREFIX}-btn-toggle-more-formats">
+            <span>More formats</span>
+            ${ICONS.chevronDown}
+          </button>
+          ${_moreFormatsExpanded ? `<div class="${PREFIX}-formats-menu" role="menu">
+                   <button class="${PREFIX}-formats-menu-item" id="${PREFIX}-btn-heatmap-png" role="menuitem">${ICONS.image}<span>Heatmap PNG</span></button>
+                   <button class="${PREFIX}-formats-menu-item" id="${PREFIX}-btn-flow" role="menuitem">${ICONS.route}<span>Flow SVG</span></button>
+                 </div>` : ""}
         </div>
       </div>
     </div>
@@ -2444,6 +2632,11 @@ function bindEvents(root) {
     if (isHeatmapVisible()) {
       renderHeatmap(getClicks(_allEvents));
     }
+    render(root, _sessions);
+  });
+  root.querySelector(`#${PREFIX}-btn-toggle-more-formats`)?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    _moreFormatsExpanded = !_moreFormatsExpanded;
     render(root, _sessions);
   });
   const sessionHelpWrap = root.querySelector(`#${PREFIX}-session-help-wrap`);
@@ -2549,10 +2742,14 @@ function bindEvents(root) {
   root.querySelector(`#${PREFIX}-btn-heatmap-png`)?.addEventListener("click", () => {
     renderHeatmap(getClicks(_allEvents));
     downloadHeatmapPNG();
+    _moreFormatsExpanded = false;
+    render(root, _sessions);
     showToast("Heatmap PNG downloaded!");
   });
   root.querySelector(`#${PREFIX}-btn-flow`)?.addEventListener("click", () => {
     const didExport = downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? void 0);
+    _moreFormatsExpanded = false;
+    render(root, _sessions);
     if (didExport) {
       showToast("Flow diagram downloaded!");
     } else {
@@ -2607,12 +2804,71 @@ function makeDraggable(el) {
 }
 function closePanel() {
   if (_panelRoot) _panelRoot.style.display = "none";
+  _moreFormatsExpanded = false;
   hideHeatmap();
   hideScrollDepthOverlay();
   resumeClickCapture();
 }
 function isPanelOpen() {
   return _panelRoot !== null && _panelRoot.style.display !== "none";
+}
+const DEFAULT_TOUCH_TRIGGER_OPTIONS = {
+  fingerCount: 3,
+  holdMs: 1500,
+  moveTolerancePx: 24
+};
+function initTouchTrigger(onTrigger, options = {}) {
+  const opts = { ...DEFAULT_TOUCH_TRIGGER_OPTIONS, ...options };
+  let timer = null;
+  let startPoints = [];
+  function clear() {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    startPoints = [];
+  }
+  function onTouchStart(e) {
+    clear();
+    if (e.touches.length !== opts.fingerCount) return;
+    startPoints = Array.from(e.touches).map((t) => ({ x: t.clientX, y: t.clientY }));
+    timer = setTimeout(() => {
+      onTrigger();
+      clear();
+    }, opts.holdMs);
+  }
+  function onTouchMove(e) {
+    if (timer === null) return;
+    if (e.touches.length !== opts.fingerCount) {
+      clear();
+      return;
+    }
+    for (let i = 0; i < e.touches.length; i++) {
+      const t = e.touches[i];
+      const start = startPoints[i];
+      if (!start) continue;
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      if (Math.sqrt(dx * dx + dy * dy) > opts.moveTolerancePx) {
+        clear();
+        return;
+      }
+    }
+  }
+  function onTouchEndOrCancel() {
+    clear();
+  }
+  document.addEventListener("touchstart", onTouchStart, { passive: true });
+  document.addEventListener("touchmove", onTouchMove, { passive: true });
+  document.addEventListener("touchend", onTouchEndOrCancel, { passive: true });
+  document.addEventListener("touchcancel", onTouchEndOrCancel, { passive: true });
+  return () => {
+    clear();
+    document.removeEventListener("touchstart", onTouchStart);
+    document.removeEventListener("touchmove", onTouchMove);
+    document.removeEventListener("touchend", onTouchEndOrCancel);
+    document.removeEventListener("touchcancel", onTouchEndOrCancel);
+  };
 }
 let _initialized = false;
 let _destroyFns = [];
@@ -2640,19 +2896,33 @@ const Recap = {
       if (e.method !== "pageload") refreshScrollCapture();
     }, strip);
     _destroyFns.push(stopClicks, stopScroll, stopNav);
+    function togglePanel() {
+      if (isPanelOpen()) {
+        closePanel();
+      } else {
+        void flush().then(() => openPanel());
+      }
+    }
     const shortcut = config.shortcut ?? "Alt+Shift+R";
     const onKey = (e) => {
       if (matchesShortcut(e, shortcut)) {
         e.preventDefault();
-        if (isPanelOpen()) {
-          closePanel();
-        } else {
-          void flush().then(() => openPanel());
-        }
+        togglePanel();
       }
     };
     document.addEventListener("keydown", onKey);
     _destroyFns.push(() => document.removeEventListener("keydown", onKey));
+    if (config.touchTrigger !== false) {
+      const touchTriggerOptions = {};
+      if (config.touchTriggerFingers !== void 0) {
+        touchTriggerOptions.fingerCount = config.touchTriggerFingers;
+      }
+      if (config.touchTriggerHoldMs !== void 0) {
+        touchTriggerOptions.holdMs = config.touchTriggerHoldMs;
+      }
+      const stopTouchTrigger = initTouchTrigger(togglePanel, touchTriggerOptions);
+      _destroyFns.push(stopTouchTrigger);
+    }
     if (config.showPanel) {
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => void openPanel(), { once: true });
@@ -2736,6 +3006,13 @@ function readScriptConfig() {
   if (el.dataset["endpoint"]) config.endpoint = el.dataset["endpoint"];
   if (el.dataset["shortcut"]) config.shortcut = el.dataset["shortcut"];
   if (el.dataset["stripQueryParams"] === "false") config.stripQueryParams = false;
+  if (el.dataset["touchTrigger"] === "false") config.touchTrigger = false;
+  if (el.dataset["touchTriggerFingers"]) {
+    config.touchTriggerFingers = parseInt(el.dataset["touchTriggerFingers"], 10);
+  }
+  if (el.dataset["touchTriggerHoldMs"]) {
+    config.touchTriggerHoldMs = parseInt(el.dataset["touchTriggerHoldMs"], 10);
+  }
   return config;
 }
 if (typeof window !== "undefined" && typeof document !== "undefined") {

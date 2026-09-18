@@ -53,6 +53,12 @@ export interface RecapConfig {
     endpoint?: string;
     shortcut?: string;
     stripQueryParams?: boolean;
+    /** Enable the touch-hold gesture that opens/closes the panel on touch devices. Default: true. */
+    touchTrigger?: boolean;
+    /** Number of simultaneous touch points required to trigger the panel. Default: 3. */
+    touchTriggerFingers?: number;
+    /** Milliseconds the touch points must be held before the panel toggles. Default: 1500. */
+    touchTriggerHoldMs?: number;
 }
 export interface SessionSummary {
     meta: {
