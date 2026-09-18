@@ -72,37 +72,12 @@ All options are `data-*` attributes on the script tag:
 
 | Attribute | Default | Description |
 |-----------|---------|-------------|
-| `data-mode` | `"researcher"` | `"researcher"` or `"participant"` (see below) |
 | `data-session-name` | auto | Label for this session, e.g. `"participant-04"` |
-| `data-show-panel` | `"false"` | Show researcher panel on load (researcher mode only) |
+| `data-show-panel` | `"false"` | Show researcher panel on load |
 | `data-shortcut` | `"alt+shift+r"` | Custom keyboard shortcut for the researcher panel |
 | `data-touch-trigger` | `"true"` | Hold 3 fingers on screen to open/close the panel on touch devices |
 | `data-touch-trigger-fingers` | `3` | Number of simultaneous touch points required |
 | `data-touch-trigger-hold-ms` | `1500` | Hold duration (ms) before the panel toggles |
-| `data-idle-timeout` | `180` | Seconds of inactivity before idle prompt (participant mode) |
-| `data-end-message` | `""` | Instructions shown on the download screen (participant mode) |
-| `data-hide-pill` | `"false"` | Hide the finish button in participant mode |
-
-## Participant mode
-
-For remote unmoderated testing, run Recap in participant mode:
-
-```html
-<script defer
-  src="https://cdn.jsdelivr.net/npm/recap-ux@1/dist/recap.min.js"
-  data-mode="participant"
-  data-end-message="Please email the downloaded file to research@example.com"
-></script>
-```
-
-In participant mode:
-
-- A subtle "Finish test" pill appears in the corner throughout the session
-- Participants get a dignified "I finished / I couldn't complete it" prompt when they're done
-- Idle detection catches participants who wander off
-- Tab-close recovery catches participants who give up
-
-Researchers import the downloaded JSON file into their own browser via the Recap panel's "Import session" button, then review with full heatmap, scroll depth, and AI export features.
 
 ## Element labelling
 
