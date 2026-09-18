@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/recap-logo.svg" alt="Recap" width="120" />
+  <img src="./assets/recap-logo-full.png" alt="Recap" width="280" />
   <h1>Recap</h1>
   <p><strong>Lightweight, privacy-first usability testing for web prototypes.</strong></p>
   <p>Drop-in click heatmaps, scroll depth tracking, and AI-ready session exports. Zero cookies, zero backend, under 10KB.</p>
