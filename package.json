@@ -50,10 +50,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tonyarbor/recap-ux.git"
+    "url": "git+https://github.com/colourandcode1/recap.git"
   },
   "bugs": {
-    "url": "https://github.com/tonyarbor/recap-ux/issues"
+    "url": "https://github.com/colourandcode1/recap/issues"
   },
   "homepage": "https://recap-ux.com",
   "engines": {
