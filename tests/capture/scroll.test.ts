@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { initScrollCapture, getMaxScrollDepth, resetScrollState } from '../../src/capture/scroll.js';
+import {
+  initScrollCapture,
+  getMaxScrollDepth,
+  resetScrollState,
+  pauseScrollCapture,
+  resumeScrollCapture,
+} from '../../src/capture/scroll.js';
 
 describe('scroll capture', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     resetScrollState();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('initializes and returns a cleanup function', () => {
@@ -36,6 +46,33 @@ describe('scroll capture', () => {
       Number(s.getAttribute('data-recap-sentinel'))
     );
     expect(pcts).toEqual(expect.arrayContaining([25, 50, 75, 100]));
+    cleanup();
+  });
+
+  it('suppresses capture while paused, and resumes after resumeScrollCapture', () => {
+    // Mirror real rAF's async ordering: `raf` is only invoked once we call it
+    // ourselves, after onScroll's synchronous `ticking = true` has already run.
+    // A rAF stub that calls back synchronously would run the callback (which
+    // sets `ticking = false`) before that assignment, getting overwritten back
+    // to `true` and permanently wedging the tracker after the first scroll.
+    let raf: FrameRequestCallback | null = null;
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      raf = cb;
+      return 0;
+    });
+    const handler = vi.fn();
+    const cleanup = initScrollCapture(handler);
+
+    pauseScrollCapture();
+    window.dispatchEvent(new Event('scroll'));
+    raf?.(0);
+    expect(handler).not.toHaveBeenCalled();
+
+    resumeScrollCapture();
+    window.dispatchEvent(new Event('scroll'));
+    raf?.(0);
+    expect(handler).toHaveBeenCalled();
+
     cleanup();
   });
 });

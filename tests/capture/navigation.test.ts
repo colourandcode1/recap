@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { initNavigationCapture } from '../../src/capture/navigation.js';
+import {
+  initNavigationCapture,
+  pauseNavigationCapture,
+  resumeNavigationCapture,
+} from '../../src/capture/navigation.js';
 
 describe('navigation capture', () => {
   beforeEach(() => {
@@ -39,5 +43,21 @@ describe('navigation capture', () => {
     const cleanup = initNavigationCapture(handler);
     cleanup();
     expect(history.pushState).toBe(originalPush);
+  });
+
+  it('suppresses capture while paused, and resumes after resumeNavigationCapture', () => {
+    const handler = vi.fn();
+    const cleanup = initNavigationCapture(handler);
+    handler.mockClear(); // drop the initial pageload event
+
+    pauseNavigationCapture();
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    expect(handler).not.toHaveBeenCalled();
+
+    resumeNavigationCapture();
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    expect(handler).toHaveBeenCalled();
+
+    cleanup();
   });
 });

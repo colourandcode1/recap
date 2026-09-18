@@ -19,6 +19,8 @@ import { enterScreenshotMode, downloadHeatmapPNG } from './screenshot.js';
 import { downloadFlowDiagram } from './flow-diagram.js';
 import { getSessionId, getSessionName } from '../capture/session.js';
 import { pauseClickCapture, resumeClickCapture } from '../capture/clicks.js';
+import { pauseNavigationCapture, resumeNavigationCapture } from '../capture/navigation.js';
+import { pauseScrollCapture, resumeScrollCapture } from '../capture/scroll.js';
 import { buildTimelineHTML, TIMELINE_STYLES } from './timeline-view.js';
 import { generateTimeline } from '../analysis/timeline.js';
 
@@ -741,6 +743,8 @@ export async function openPanel(): Promise<void> {
     _panelRoot.style.display = 'flex';
     if (_activeTab === 'heatmap') syncPanelMinHeight(_panelRoot);
     pauseClickCapture();
+    pauseNavigationCapture();
+    pauseScrollCapture();
     return;
   }
 
@@ -778,6 +782,8 @@ export async function openPanel(): Promise<void> {
   // Make draggable
   makeDraggable(_panelRoot);
   pauseClickCapture();
+  pauseNavigationCapture();
+  pauseScrollCapture();
 }
 
 function render(
@@ -1205,6 +1211,8 @@ export function closePanel(): void {
   hideHeatmap();
   hideScrollDepthOverlay();
   resumeClickCapture();
+  resumeNavigationCapture();
+  resumeScrollCapture();
 }
 
 export function isPanelOpen(): boolean {
