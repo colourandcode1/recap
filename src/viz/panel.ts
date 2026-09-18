@@ -148,8 +148,9 @@ const STYLES = `
     width: 22px;
     height: 22px;
     border-radius: calc(var(--radius) - 3px);
-    background: var(--secondary);
-    color: var(--foreground);
+    /* Fixed white/black regardless of theme — this is the brand mark, not a themed icon. */
+    background: #fff;
+    color: #000;
   }
   .${PREFIX}-close {
     display: inline-flex;
