@@ -31,6 +31,8 @@ That's it. Recap starts recording silently. When you're ready to review, press `
 
 When you're testing in person and need to add another participant, open the same prototype in a new browser tab. Recap creates a new session per tab, so each participant is captured separately.
 
+On a phone or tablet there's no keyboard for `Alt+Shift+R` — hold **three fingers** on the screen for about **1.5 seconds** instead. It's a deliberately "hidden" gesture (no on-screen button), so it never shows up as something for the participant to notice or tap.
+
 The researcher panel now includes:
 
 - A `Session` help icon directly beside the label
@@ -74,6 +76,9 @@ All options are `data-*` attributes on the script tag:
 | `data-session-name` | auto | Label for this session, e.g. `"participant-04"` |
 | `data-show-panel` | `"false"` | Show researcher panel on load (researcher mode only) |
 | `data-shortcut` | `"alt+shift+r"` | Custom keyboard shortcut for the researcher panel |
+| `data-touch-trigger` | `"true"` | Hold 3 fingers on screen to open/close the panel on touch devices |
+| `data-touch-trigger-fingers` | `3` | Number of simultaneous touch points required |
+| `data-touch-trigger-hold-ms` | `1500` | Hold duration (ms) before the panel toggles |
 | `data-idle-timeout` | `180` | Seconds of inactivity before idle prompt (participant mode) |
 | `data-end-message` | `""` | Instructions shown on the download screen (participant mode) |
 | `data-hide-pill` | `"false"` | Hide the finish button in participant mode |
