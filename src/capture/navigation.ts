@@ -10,13 +10,17 @@ let _handler: NavHandler | null = null;
 let _stripQuery = true;
 let _currentUrl = '';
 let _cleanupFns: Array<() => void> = [];
+let _paused = false;
+
+export function pauseNavigationCapture(): void { _paused = true; }
+export function resumeNavigationCapture(): void { _paused = false; }
 
 // Keep original references
 const _originalPushState = history.pushState.bind(history);
 const _originalReplaceState = history.replaceState.bind(history);
 
 function emit(from: string, to: string, method: NavigationEvent['method']): void {
-  if (!_handler) return;
+  if (!_handler || _paused) return;
   try {
     const event: NavigationEvent = {
       sessionId: getSessionId(),

@@ -18,6 +18,10 @@ let _observer: IntersectionObserver | null = null;
 let _rafId: number | null = null;
 let _resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let _cleanupFns: Array<() => void> = [];
+let _paused = false;
+
+export function pauseScrollCapture(): void { _paused = true; }
+export function resumeScrollCapture(): void { _paused = false; }
 
 function getScrollDepth(): number {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -34,7 +38,7 @@ function getScrollDepth(): number {
 }
 
 function emitScroll(depth: number): void {
-  if (!_handler) return;
+  if (!_handler || _paused) return;
   _maxDepth = Math.max(_maxDepth, depth);
 
   const event: ScrollEvent = {
