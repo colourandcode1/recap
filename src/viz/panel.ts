@@ -31,19 +31,86 @@ type ParticipantGuidanceAction =
   | 'tooltip_opened'
   | 'open_tab_clicked';
 
+// Minimal line-icon set (lucide-style: 24x24 viewBox, currentColor stroke) —
+// replaces emoji glyphs, which read as decorative/colourful rather than the
+// flat, monochrome icon language shadcn/ui uses.
+function icon(inner: string, size = 14): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${inner}</svg>`;
+}
+
+const ICONS = {
+  zap: icon('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
+  close: icon('<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>', 15),
+  flame: icon(
+    '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
+  ),
+  scrollDepth: icon(
+    '<line x1="12" y1="3" x2="12" y2="21"/><polyline points="7 8 12 3 17 8"/><polyline points="7 16 12 21 17 16"/>'
+  ),
+  camera: icon(
+    '<rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/>'
+  ),
+  sparkles:
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z"/></svg>',
+  fileText: icon(
+    '<path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><line x1="8" y1="12" x2="15" y2="12"/><line x1="8" y1="16" x2="15" y2="16"/>'
+  ),
+  barChart: icon(
+    '<line x1="4" y1="20" x2="4" y2="4"/><line x1="4" y1="20" x2="20" y2="20"/><rect x="7" y="13" width="3" height="7"/><rect x="12" y="9" width="3" height="11"/><rect x="17" y="5" width="3" height="15"/>'
+  ),
+  image: icon(
+    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'
+  ),
+  route: icon('<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7c0 6 8 4 8 8"/>'),
+  clock: icon('<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>', 13),
+  cursor:
+    '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M5 3l14 6-6 2-2 6z"/></svg>',
+  layers: icon(
+    '<rect x="4" y="4" width="10" height="10" rx="1.5"/><rect x="9" y="9" width="10" height="10" rx="1.5"/>',
+    13
+  ),
+  arrowDown: icon('<line x1="12" y1="4" x2="12" y2="18"/><polyline points="7 13 12 18 17 13"/>', 13),
+  chevronDown: icon('<polyline points="6 9 12 15 18 9"/>', 12),
+} as const;
+
 const STYLES = `
   .${PREFIX}-root {
+    --background: #09090b;
+    --foreground: #fafafa;
+    --card: #18181b;
+    --card-foreground: #fafafa;
+    --popover: #18181b;
+    --popover-foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-hover: #e4e4e7;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #3f3f46;
+    --accent-foreground: #fafafa;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #fef2f2;
+    --destructive-accent: #f87171;
+    --success-accent: #4ade80;
+    --border: #27272a;
+    --input: #3f3f46;
+    --ring: #71717a;
+    --radius: 0.5rem;
+
     position: fixed;
     bottom: 20px;
     right: 20px;
     width: 320px;
     max-height: 70vh;
-    background: #1a1a2e;
-    color: #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    background: var(--background);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
     z-index: 10000;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 13px;
     line-height: 1.5;
     overflow: hidden;
@@ -55,30 +122,49 @@ const STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
-    background: #16213e;
-    border-bottom: 1px solid #2d3748;
+    padding: 12px 16px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
     cursor: move;
     flex-shrink: 0;
   }
   .${PREFIX}-title {
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
     font-size: 14px;
-    color: #4299e1;
-    letter-spacing: 0.05em;
+    color: var(--foreground);
+    letter-spacing: -0.01em;
+  }
+  .${PREFIX}-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: calc(var(--radius) - 3px);
+    background: var(--secondary);
+    color: var(--foreground);
   }
   .${PREFIX}-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     background: none;
     border: none;
-    color: #a0aec0;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
     cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0 4px;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
   }
-  .${PREFIX}-close:hover { color: #fff; }
+  .${PREFIX}-close:hover { background: var(--accent); color: var(--foreground); }
+  .${PREFIX}-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-body {
-    padding: 12px 14px;
+    padding: 14px 16px;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -109,12 +195,12 @@ const STYLES = `
     justify-content: center;
     align-items: center;
     gap: 6px;
-    color: #718096;
+    color: var(--muted-foreground);
     text-align: center;
     padding: 10px 16px;
   }
   .${PREFIX}-timeline-empty-title {
-    color: #a0aec0;
+    color: var(--foreground);
     font-size: 12px;
     font-weight: 600;
   }
@@ -122,14 +208,15 @@ const STYLES = `
     font-size: 11px;
   }
   .${PREFIX}-section {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .${PREFIX}-label {
     font-size: 10px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #718096;
-    margin-bottom: 6px;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    margin-bottom: 8px;
   }
   .${PREFIX}-label-row {
     display: flex;
@@ -151,9 +238,9 @@ const STYLES = `
     width: 18px;
     height: 18px;
     border-radius: 999px;
-    border: 1px solid #4a5568;
-    background: #2d3748;
-    color: #a0aec0;
+    border: 1px solid var(--border);
+    background: var(--secondary);
+    color: var(--muted-foreground);
     font-size: 11px;
     line-height: 1;
     display: inline-flex;
@@ -161,25 +248,28 @@ const STYLES = `
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .${PREFIX}-help-btn:hover,
   .${PREFIX}-help-btn:focus-visible {
-    background: #3a4a6b;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--accent);
+    border-color: var(--ring);
+    color: var(--foreground);
   }
+  .${PREFIX}-help-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-hint-tooltip {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     width: 250px;
-    background: #0f172a;
-    border: 1px solid #2d4a74;
-    border-radius: 6px;
+    background: var(--popover);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
     padding: 8px 10px;
     font-size: 11px;
-    color: #dbeafe;
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -4px rgba(0,0,0,0.4), 0 10px 15px -3px rgba(0,0,0,0.4);
     z-index: 2;
   }
   .${PREFIX}-label-with-help:hover .${PREFIX}-hint-tooltip,
@@ -195,62 +285,86 @@ const STYLES = `
   .${PREFIX}-inline-link {
     border: none;
     background: none;
-    color: #63b3ed;
+    color: var(--muted-foreground);
     font-size: 11px;
     padding: 0;
     cursor: pointer;
     text-decoration: underline;
-    font-family: system-ui, sans-serif;
+    text-underline-offset: 2px;
+    font-family: inherit;
   }
-  .${PREFIX}-inline-link:hover { color: #90cdf4; }
+  .${PREFIX}-inline-link:hover { color: var(--foreground); }
   .${PREFIX}-docs-link-btn {
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    background: #2d3748;
-    color: #bee3f8;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: var(--foreground);
     font-size: 11px;
     line-height: 1;
     padding: 4px 8px;
     cursor: pointer;
-    font-family: system-ui, sans-serif;
+    font-family: inherit;
     white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
   }
   .${PREFIX}-docs-link-btn:hover,
   .${PREFIX}-docs-link-btn:focus-visible {
-    background: #3a4a6b;
-    border-color: #4299e1;
-    color: #e2e8f0;
+    background: var(--accent);
+    border-color: var(--ring);
   }
+  .${PREFIX}-docs-link-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-select {
     width: 100%;
-    background: #2d3748;
-    color: #e2e8f0;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    padding: 5px 8px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--background);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px 14px;
+    color: var(--foreground);
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    padding: 6px 28px 6px 10px;
     font-size: 12px;
   }
+  .${PREFIX}-select:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    overflow: hidden;
   }
   .${PREFIX}-stat {
-    background: #2d3748;
-    border-radius: 4px;
-    padding: 6px 8px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 4px;
     text-align: center;
+    border-right: 1px solid var(--border);
   }
+  .${PREFIX}-stat:last-child { border-right: none; }
   .${PREFIX}-stat-value {
-    font-size: 18px;
+    width: 100%;
+    font-size: 15px;
     font-weight: 700;
-    color: #4299e1;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .${PREFIX}-stat-key {
     font-size: 10px;
-    color: #718096;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
   }
   .${PREFIX}-toggles {
     display: flex;
@@ -258,104 +372,184 @@ const STYLES = `
   }
   .${PREFIX}-toggle {
     flex: 1;
-    padding: 7px 6px;
-    background: #2d3748;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    color: #a0aec0;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 8px;
+    background: transparent;
+    border: 1.5px solid var(--input);
+    border-radius: var(--radius);
+    color: var(--muted-foreground);
     cursor: pointer;
-    font-size: 11px;
-    font-family: system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
     text-align: center;
     transition: all 0.15s;
   }
-  .${PREFIX}-toggle:hover { background: #3a4a6b; color: #e2e8f0; }
+  .${PREFIX}-toggle svg { width: 22px; height: 22px; }
+  .${PREFIX}-toggle:hover { background: var(--accent); color: var(--foreground); }
+  .${PREFIX}-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-toggle.active {
-    background: #2b6cb0;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
   }
-  .${PREFIX}-flow {
-    background: #0f0f23;
-    border-radius: 4px;
-    padding: 8px;
-    max-height: 120px;
-    overflow-y: auto;
+  .${PREFIX}-export-primary {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--primary);
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--primary-foreground);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .${PREFIX}-export-primary svg { width: 16px; height: 16px; }
+  .${PREFIX}-export-primary:hover { background: var(--primary-hover); }
+  .${PREFIX}-export-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
+  .${PREFIX}-more-formats-wrap {
+    position: relative;
+    margin-top: 8px;
+  }
+  .${PREFIX}-more-formats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--muted-foreground);
     font-size: 11px;
-    color: #a0aec0;
-  }
-  .${PREFIX}-flow-item {
+    font-weight: 500;
+    font-family: inherit;
     padding: 2px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    cursor: pointer;
   }
-  .${PREFIX}-flow-arrow {
-    color: #4299e1;
-    margin: 0 4px;
+  .${PREFIX}-more-formats:hover { color: var(--foreground); }
+  .${PREFIX}-more-formats svg { transition: transform 0.15s; }
+  .${PREFIX}-more-formats.expanded svg { transform: rotate(180deg); }
+  .${PREFIX}-formats-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
+    padding: 4px;
+    z-index: 5;
   }
+  .${PREFIX}-formats-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    border-radius: calc(var(--radius) - 4px);
+    color: var(--popover-foreground);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .${PREFIX}-formats-menu-item:hover,
+  .${PREFIX}-formats-menu-item:focus-visible { background: var(--accent); outline: none; }
   .${PREFIX}-exports {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
   .${PREFIX}-btn {
-    padding: 7px 4px;
-    background: #2d3748;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    color: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 4px;
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    color: var(--secondary-foreground);
     cursor: pointer;
-    font-size: 10px;
-    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: inherit;
     text-align: center;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .${PREFIX}-btn:hover { background: #3a4a6b; }
+  .${PREFIX}-btn:hover { background: var(--accent); }
+  .${PREFIX}-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ring); }
   .${PREFIX}-btn.primary {
-    background: #2b6cb0;
-    border-color: #4299e1;
-    color: #bee3f8;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: none;
   }
-  .${PREFIX}-btn.primary:hover { background: #2c5282; }
+  .${PREFIX}-btn.primary:hover { background: var(--primary-hover); }
   .${PREFIX}-btn.danger {
-    background: #742a2a;
-    border-color: #fc8181;
-    color: #fed7d7;
+    background: var(--destructive);
+    border-color: var(--destructive);
+    color: var(--destructive-foreground);
+    box-shadow: none;
   }
-  .${PREFIX}-btn.danger:hover { background: #9b2c2c; }
+  .${PREFIX}-btn.danger:hover { background: #991b1b; }
   .${PREFIX}-footer {
     padding: 8px 14px;
-    border-top: 1px solid #2d3748;
+    border-top: 1px solid var(--border);
     text-align: center;
     flex-shrink: 0;
   }
   .${PREFIX}-clear-link {
     background: none;
     border: none;
-    color: #718096;
+    color: var(--muted-foreground);
     font-size: 11px;
     cursor: pointer;
     text-decoration: underline;
-    font-family: system-ui, sans-serif;
+    text-underline-offset: 2px;
+    font-family: inherit;
   }
-  .${PREFIX}-clear-link:hover { color: #fc8181; }
+  .${PREFIX}-clear-link:hover { color: var(--destructive-accent); }
   .${PREFIX}-toast {
+    /* Note: rendered as a direct child of <body>, not \`.${PREFIX}-root\`,
+       so it can't inherit that element's CSS variables — values here are
+       literal, matching the same zinc/dark palette. */
     position: fixed;
     bottom: 80px;
     right: 20px;
-    background: #276749;
-    color: #c6f6d5;
+    background: #18181b;
+    color: #fafafa;
+    border: 1px solid #27272a;
+    border-left: 3px solid #4ade80;
     padding: 8px 14px;
     border-radius: 6px;
     font-size: 12px;
-    font-family: system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.4);
     z-index: 10001;
     animation: ${PREFIX}-fadein 0.2s ease;
   }
   .${PREFIX}-toast.${PREFIX}-toast-error {
-    background: #742a2a;
-    color: #fed7d7;
+    border-left-color: #f87171;
+    color: #f87171;
   }
   @keyframes ${PREFIX}-fadein {
     from { opacity: 0; transform: translateY(8px); }
@@ -373,6 +567,7 @@ let _heatmapFilter: HeatmapFilter | null = null;
 let _origPushState: typeof history.pushState | null = null;
 let _hasTrackedTooltipOpened = false;
 let _preferredPanelMinHeight = 0;
+let _moreFormatsExpanded = false;
 
 function readStorage(key: string): string | null {
   try {
@@ -442,6 +637,15 @@ function handleUrlChange(): void {
   render(_panelRoot, _sessions);
 }
 
+function handleOutsideClickForFormatsMenu(e: MouseEvent): void {
+  if (!_moreFormatsExpanded || !_panelRoot) return;
+  const wrap = _panelRoot.querySelector(`.${PREFIX}-more-formats-wrap`);
+  if (wrap && !wrap.contains(e.target as Node)) {
+    _moreFormatsExpanded = false;
+    render(_panelRoot, _sessions);
+  }
+}
+
 function injectStyles(): void {
   if (_styleEl) return;
   _styleEl = document.createElement('style');
@@ -484,22 +688,6 @@ function getScrolls(events: AnyEvent[]): ScrollEvent[] {
 
 function getNavs(events: AnyEvent[]): NavigationEvent[] {
   return events.filter((e): e is NavigationEvent => e.type === 'navigation');
-}
-
-function buildNavFlowHTML(events: AnyEvent[]): string {
-  const navs = getNavs(events).filter((n) => n.to);
-  if (navs.length === 0) return '<div style="color:#718096;font-style:italic">No navigation recorded</div>';
-
-  const path = navs.map((n) => n.to);
-  let html = '';
-  for (let i = 0; i < path.length; i++) {
-    const url = path[i]!;
-    html += `<div class="${PREFIX}-flow-item">`;
-    if (i > 0) html += `<span class="${PREFIX}-flow-arrow">→</span>`;
-    html += `<span title="${url}">${url}</span>`;
-    html += '</div>';
-  }
-  return html;
 }
 
 function getStats(events: AnyEvent[]): {
@@ -568,6 +756,9 @@ export async function openPanel(): Promise<void> {
   };
   window.addEventListener('popstate', handleUrlChange);
 
+  // Close the "more formats" menu on outside click
+  document.addEventListener('click', handleOutsideClickForFormatsMenu);
+
   // Make draggable
   makeDraggable(_panelRoot);
   pauseClickCapture();
@@ -598,7 +789,20 @@ function render(
   const heatmapTabContent = `
     ${filterBar}
     <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Stats</div>
+      <div class="${PREFIX}-label">View</div>
+      <div class="${PREFIX}-toggles">
+        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? 'active' : ''}" id="${PREFIX}-toggle-heatmap">
+          ${ICONS.flame}
+          <span>Heatmap</span>
+        </button>
+        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? 'active' : ''}" id="${PREFIX}-toggle-scroll">
+          ${ICONS.scrollDepth}
+          <span>Scroll Depth</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="${PREFIX}-section" style="margin-bottom:0;">
       <div class="${PREFIX}-stats">
         <div class="${PREFIX}-stat">
           <div class="${PREFIX}-stat-value">${stats.clicks}</div>
@@ -614,26 +818,9 @@ function render(
         </div>
         <div class="${PREFIX}-stat">
           <div class="${PREFIX}-stat-value">${stats.maxScroll}%</div>
-          <div class="${PREFIX}-stat-key">Max Scroll</div>
+          <div class="${PREFIX}-stat-key">Scroll</div>
         </div>
       </div>
-    </div>
-
-    <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Overlays</div>
-      <div class="${PREFIX}-toggles">
-        <button class="${PREFIX}-toggle ${isHeatmapVisible() ? 'active' : ''}" id="${PREFIX}-toggle-heatmap">
-          🔥 Heatmap
-        </button>
-        <button class="${PREFIX}-toggle ${isScrollDepthVisible() ? 'active' : ''}" id="${PREFIX}-toggle-scroll">
-          📏 Scroll Depth
-        </button>
-      </div>
-    </div>
-
-    <div class="${PREFIX}-section">
-      <div class="${PREFIX}-label">Navigation Flow</div>
-      <div class="${PREFIX}-flow">${buildNavFlowHTML(_allEvents)}</div>
     </div>
   `;
 
@@ -645,8 +832,8 @@ function render(
 
   root.innerHTML = `
     <div class="${PREFIX}-header">
-      <span class="${PREFIX}-title">⚡ Recap</span>
-      <button class="${PREFIX}-close" aria-label="Close panel">×</button>
+      <span class="${PREFIX}-title"><span class="${PREFIX}-title-icon">${ICONS.zap}</span>Recap</span>
+      <button class="${PREFIX}-close" aria-label="Close panel">${ICONS.close}</button>
     </div>
     <div class="${PREFIX}-body">
       <div class="${PREFIX}-content-scroll">
@@ -695,13 +882,25 @@ function render(
 
       <div class="${PREFIX}-section" style="margin-top:12px;margin-bottom:0;">
         <div class="${PREFIX}-label">Export</div>
+        <button class="${PREFIX}-export-primary" id="${PREFIX}-btn-ai">${ICONS.sparkles}<span>Export for AI</span></button>
         <div class="${PREFIX}-exports">
-          <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-screenshot">📸 Screenshot</button>
-          <button class="${PREFIX}-btn primary" id="${PREFIX}-btn-ai">🤖 Export AI</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-json">📄 Raw JSON</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-csv">📊 CSV</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-heatmap-png">🖼 Heatmap PNG</button>
-          <button class="${PREFIX}-btn" id="${PREFIX}-btn-flow">🗺 Flow SVG</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-screenshot">Screenshot</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-json">Raw JSON</button>
+          <button class="${PREFIX}-btn" id="${PREFIX}-btn-csv">CSV</button>
+        </div>
+        <div class="${PREFIX}-more-formats-wrap">
+          <button class="${PREFIX}-more-formats ${_moreFormatsExpanded ? 'expanded' : ''}" id="${PREFIX}-btn-toggle-more-formats">
+            <span>More formats</span>
+            ${ICONS.chevronDown}
+          </button>
+          ${
+            _moreFormatsExpanded
+              ? `<div class="${PREFIX}-formats-menu" role="menu">
+                   <button class="${PREFIX}-formats-menu-item" id="${PREFIX}-btn-heatmap-png" role="menuitem">${ICONS.image}<span>Heatmap PNG</span></button>
+                   <button class="${PREFIX}-formats-menu-item" id="${PREFIX}-btn-flow" role="menuitem">${ICONS.route}<span>Flow SVG</span></button>
+                 </div>`
+              : ''
+          }
         </div>
       </div>
     </div>
@@ -746,6 +945,19 @@ function bindEvents(root: HTMLDivElement): void {
       if (isHeatmapVisible()) {
         renderHeatmap(getClicks(_allEvents));
       }
+      render(root, _sessions);
+    });
+
+  // "More formats" expand/collapse
+  root
+    .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-toggle-more-formats`)
+    ?.addEventListener('click', (e) => {
+      // Stop this click from reaching the document-level outside-click
+      // listener below: render() detaches this button, so by the time the
+      // event bubbles to `document` its target is stale and would look like
+      // an "outside" click, closing the menu the instant it opens.
+      e.stopPropagation();
+      _moreFormatsExpanded = !_moreFormatsExpanded;
       render(root, _sessions);
     });
 
@@ -898,6 +1110,8 @@ function bindEvents(root: HTMLDivElement): void {
     ?.addEventListener('click', () => {
       renderHeatmap(getClicks(_allEvents));
       downloadHeatmapPNG();
+      _moreFormatsExpanded = false;
+      render(root, _sessions);
       showToast('Heatmap PNG downloaded!');
     });
 
@@ -906,6 +1120,8 @@ function bindEvents(root: HTMLDivElement): void {
     .querySelector<HTMLButtonElement>(`#${PREFIX}-btn-flow`)
     ?.addEventListener('click', () => {
       const didExport = downloadFlowDiagram(getNavs(_allEvents), getSessionName() ?? undefined);
+      _moreFormatsExpanded = false;
+      render(root, _sessions);
       if (didExport) {
         showToast('Flow diagram downloaded!');
       } else {
@@ -969,6 +1185,7 @@ function makeDraggable(el: HTMLDivElement): void {
 
 export function closePanel(): void {
   if (_panelRoot) _panelRoot.style.display = 'none';
+  _moreFormatsExpanded = false;
   hideHeatmap();
   hideScrollDepthOverlay();
   resumeClickCapture();
@@ -984,9 +1201,11 @@ export function destroyPanel(): void {
     _origPushState = null;
   }
   window.removeEventListener('popstate', handleUrlChange);
+  document.removeEventListener('click', handleOutsideClickForFormatsMenu);
   _panelRoot?.parentElement?.removeChild(_panelRoot);
   _styleEl?.parentElement?.removeChild(_styleEl);
   _panelRoot = null;
   _styleEl = null;
   _preferredPanelMinHeight = 0;
+  _moreFormatsExpanded = false;
 }

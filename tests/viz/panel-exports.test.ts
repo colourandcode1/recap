@@ -114,6 +114,8 @@ describe('panel export feedback', () => {
     vi.mocked(downloadFlowDiagram).mockReturnValueOnce(false);
     await openPanel();
 
+    // Flow SVG lives behind the "More formats" disclosure
+    (document.querySelector('#recap-panel-btn-toggle-more-formats') as HTMLButtonElement).click();
     (document.querySelector('#recap-panel-btn-flow') as HTMLButtonElement).click();
 
     expect(getLastToastText()).toContain('Flow export failed');
