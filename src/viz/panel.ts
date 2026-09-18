@@ -555,6 +555,17 @@ const STYLES = `
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @media (max-width: 480px) {
+    .${PREFIX}-root {
+      width: calc(100vw - 24px);
+      right: 12px;
+      bottom: 12px;
+      max-height: 80vh;
+    }
+    .${PREFIX}-toast {
+      right: 12px;
+    }
+  }
 `;
 
 let _panelRoot: HTMLDivElement | null = null;

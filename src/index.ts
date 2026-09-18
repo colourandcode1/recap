@@ -10,6 +10,7 @@ import { initBuffer, flush, push, getBuffer } from './storage/buffer.js';
 import { saveEvents, purgeOldSessions } from './storage/idb.js';
 import { setEndpoint, sendBeaconBatch, hasEndpoint } from './storage/beacon.js';
 import { openPanel, closePanel, isPanelOpen } from './viz/panel.js';
+import { initTouchTrigger, type TouchTriggerOptions } from './capture/touch-trigger.js';
 import { summarize } from './analysis/summarize.js';
 import { exportJSON, exportCSV, exportSummaryJSON } from './storage/export.js';
 
@@ -55,20 +56,37 @@ export const Recap = {
 
     _destroyFns.push(stopClicks, stopScroll, stopNav);
 
+    function togglePanel(): void {
+      if (isPanelOpen()) {
+        closePanel();
+      } else {
+        void flush().then(() => openPanel());
+      }
+    }
+
     // Keyboard shortcut to toggle panel
     const shortcut = config.shortcut ?? 'Alt+Shift+R';
     const onKey = (e: KeyboardEvent): void => {
       if (matchesShortcut(e, shortcut)) {
         e.preventDefault();
-        if (isPanelOpen()) {
-          closePanel();
-        } else {
-          void flush().then(() => openPanel());
-        }
+        togglePanel();
       }
     };
     document.addEventListener('keydown', onKey);
     _destroyFns.push(() => document.removeEventListener('keydown', onKey));
+
+    // Touch-hold gesture to toggle panel (no keyboard on mobile/in-person tests)
+    if (config.touchTrigger !== false) {
+      const touchTriggerOptions: Partial<TouchTriggerOptions> = {};
+      if (config.touchTriggerFingers !== undefined) {
+        touchTriggerOptions.fingerCount = config.touchTriggerFingers;
+      }
+      if (config.touchTriggerHoldMs !== undefined) {
+        touchTriggerOptions.holdMs = config.touchTriggerHoldMs;
+      }
+      const stopTouchTrigger = initTouchTrigger(togglePanel, touchTriggerOptions);
+      _destroyFns.push(stopTouchTrigger);
+    }
 
     // Auto-show panel if requested
     if (config.showPanel) {
@@ -192,6 +210,13 @@ function readScriptConfig(): RecapConfig {
   if (el.dataset['endpoint']) config.endpoint = el.dataset['endpoint'];
   if (el.dataset['shortcut']) config.shortcut = el.dataset['shortcut'];
   if (el.dataset['stripQueryParams'] === 'false') config.stripQueryParams = false;
+  if (el.dataset['touchTrigger'] === 'false') config.touchTrigger = false;
+  if (el.dataset['touchTriggerFingers']) {
+    config.touchTriggerFingers = parseInt(el.dataset['touchTriggerFingers'], 10);
+  }
+  if (el.dataset['touchTriggerHoldMs']) {
+    config.touchTriggerHoldMs = parseInt(el.dataset['touchTriggerHoldMs'], 10);
+  }
 
   return config;
 }
