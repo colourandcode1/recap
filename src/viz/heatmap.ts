@@ -139,6 +139,9 @@ export function renderHeatmap(clicks: ClickEvent[], filter?: HeatmapFilter): voi
   _clicks = clicks;
   _filter = filter ?? null;
   resizeCanvas();
+  // Nothing to draw on a zero-size canvas (e.g. panel opened before the page
+  // has laid out) — getImageData throws IndexSizeError on a 0 dimension.
+  if (_canvas.width === 0 || _canvas.height === 0) return;
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
 
   // Apply filter: a specific visit's time range if set, otherwise scope to current page
