@@ -736,9 +736,10 @@ export async function openPanel(): Promise<void> {
     // Refresh data each time the panel is re-opened
     try { _sessions = await getAllSessions(); } catch { /* ignore */ }
     _allEvents = await loadSessionData(_currentSessionId);
-    if (isHeatmapVisible()) {
-      renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? undefined);
-    }
+    // Heatmap defaults on every time the panel opens (closePanel() hides it) —
+    // it's the clearest way for a first-time researcher to see the tool working.
+    showHeatmap();
+    renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? undefined);
     render(_panelRoot, _sessions);
     _panelRoot.style.display = 'flex';
     if (_activeTab === 'heatmap') syncPanelMinHeight(_panelRoot);
@@ -757,6 +758,8 @@ export async function openPanel(): Promise<void> {
   // Default to current session
   _currentSessionId = getSessionId();
   _allEvents = await loadSessionData(_currentSessionId);
+  showHeatmap();
+  renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? undefined);
 
   // Build panel DOM
   _panelRoot = document.createElement('div');
