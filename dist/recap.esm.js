@@ -2463,9 +2463,8 @@ async function openPanel() {
     } catch {
     }
     _allEvents = await loadSessionData(_currentSessionId);
-    if (isHeatmapVisible()) {
-      renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? void 0);
-    }
+    showHeatmap();
+    renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? void 0);
     render(_panelRoot, _sessions);
     _panelRoot.style.display = "flex";
     if (_activeTab === "heatmap") syncPanelMinHeight(_panelRoot);
@@ -2482,6 +2481,8 @@ async function openPanel() {
   }
   _currentSessionId = getSessionId();
   _allEvents = await loadSessionData(_currentSessionId);
+  showHeatmap();
+  renderHeatmap(getClicks(_allEvents), _heatmapFilter ?? void 0);
   _panelRoot = document.createElement("div");
   _panelRoot.className = `${PREFIX}-root`;
   _panelRoot.setAttribute("data-recap-panel", "true");
